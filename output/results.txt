@@ -1,0 +1,33 @@
+4000 reconstruction error in 2000 iters with 0.01 l1 regularization
+
+Number of entries: 2536705
+Max ids are 93704 and 3560
+Number of unique ids are 92088 and 3561
+Sparsity = 0.0077356168431592645
+
+Ratings distribution: [114214, 251596, 728518, 860463, 581913]
+In proportion is:     [0.0450, 0.0991, 0.2872, 0.3392, 0.2293]
+
+Items distribution (how many times they were rated):
+    Min = 1,
+    Max = 30570,
+    Mean = 712.4,
+    Median = 71.0,
+    Var = 4458264.9,
+    Std = 2111.5
+User distribution  (how many times each user voted):
+    Min = 1,
+    Max = 2283,
+    Mean = 27.5,
+    Median = 13.0,
+    Var = 1633.3,
+    Std = 40.4
+
+Both are long-tailed distributions actually.
+Information du fait de noter -> quelles infos donne l'ordre des notes accordees.
+Similarity of itemsets, similarity of users? (Same needs, how was the company's response
+Only one vote: optimal is mean of the item votes.
+
+Data has 2536705 samples, 253725 for validation.
+RMSE=3397.9385902550616
+Validation RMSE=11.844460241276707
