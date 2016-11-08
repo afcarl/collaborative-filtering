@@ -15,10 +15,16 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.metrics import mean_squared_error
 
 
+data_dir = os.path.split(os.path.realpath(__file__))[0] + "/../input"
+
+trainSet = data_dir + "/customeraffinity.train"
+scoreSet = data_dir + "/customeraffinity.score"
+
 def import_data(pr_valid=0.1):
     train_mat = np.zeros((93705, 3562), dtype=np.int32)
     validation_lst = []
-    with open('../data/customeraffinity.train') as train_file:
+
+    with open(trainSet) as train_file:
         lines = train_file.readlines()
         for line in lines[1:]:
             splits = [int(s) for s in line.split(",")]
@@ -32,7 +38,7 @@ def import_data(pr_valid=0.1):
 
 
 def test_set_stats():
-    tbl = pd.read_table('../data/customeraffinity.score')
+    tbl = pd.read_table(scoreSet)
     user_arr = tbl.iloc[:, 1].values
     item_arr = tbl.iloc[:, 2].values
     data = np.ones(len(item_arr))
@@ -51,7 +57,7 @@ def training_set_stats():
     s1, s2 = set(), set()
     hist = [0] * 5
     lines = 0
-    with open('../data/customeraffinity.train') as train_file:
+    with open(trainSet) as train_file:
         for line in train_file:
             if not lines:
                 lines += 1
@@ -159,7 +165,7 @@ def validation_rmse(w, h, validation_ratings):
 
 
 def test(w, h):
-    with open('../data/customeraffinity.score') as test_file:
+    with open('../input/customeraffinity.score') as test_file:
         lines = test_file.readlines()
         test_ratings = np.empty(len(lines) - 1, dtype=np.float64)
         for i, line in enumerate(lines[1:]):
@@ -173,10 +179,10 @@ def test(w, h):
 
 
 if __name__ == "__main__":
-    training_set_stats()
+    # training_set_stats()
     # Files paths
-    data_file = '../data/matrices.xz'
-    model_file = '../data/model_params'
+    data_file = data_dir + '/matrices.xz'
+    model_file = data_dir + '/model_params'
     p_valid = 0.1
 
     # --- Load data
