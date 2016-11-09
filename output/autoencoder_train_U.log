@@ -135,3 +135,49 @@ nn.Sequential {
 ******** BEST MAE  = 0.73160073018861
 Saving final network on Disk...
 Done!!!
+
+------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
+
+th computeMetrics.lua -file ../../input/customer-train.t7 -network networkU.10M.t7 -type U -gpu 0
+Options:
+ - gpu  	 : 0
+ - file  	 : ../../input/customer-train.t7
+ - network  	 : networkU.10M.t7
+ - type  	 : U
+ - ratioStep  	 : 0.2
+Loading data...
+Loading data from disk...
+
+Users loaded      : 92088
+Items loaded      : 3561
+
+No Train ratings  : 2282399
+No Test  ratings  : 254305
+Training ratio    : 0.89974983285397
+Training density  : 0.0069601172178909
+
+Unbias the data...
+Data was successfully preloaded...
+Loading network...
+nn.Sequential {
+  [input -> (1) -> (2) -> (3) -> (4) -> output]
+  (1): nnsparse.SparseLinearBatch(3561 -> 700)
+  (2): nn.Tanh
+  (3): nn.Linear(700 -> 3561)
+  (4): nn.Tanh
+}
+18332/91480	 ratio [0.2] : 1.3067259046383	 Interval [0-0.2]: 1.3067259046383
+36609/91480	 ratio [0.4] : 1.1780364322404	 Interval [0.2-0.4]: 1.1047523125922
+54913/91480	 ratio [0.6] : 1.0823826386422	 Interval [0.4-0.6]: 1.0078003447602
+73198/91480	 ratio [0.8] : 1.0035995213482	 Interval [0.6-0.8]: 0.93734097938737
+91480/91480	 ratio [1.0] : 0.93785423872778	 Interval [0.8-1.0]: 0.89689756968318
+Final RMSE: 0.93785423872778
+Final MAE : 0.73173251297437
+TRANSPOSE !!!
+670/3346	 ratio [0.2] : 1.1432412123715	 Interval [0-0.2]: 1.1432412123715
+1339/3346	 ratio [0.4] : 1.1095764253208	 Interval [0.2-0.4]: 1.0955988843545
+2008/3346	 ratio [0.6] : 1.0728052266663	 Interval [0.4-0.6]: 1.0514919762236
+2677/3346	 ratio [0.8] : 1.0062778851303	 Interval [0.6-0.8]: 0.97482191414609
+3346/3346	 ratio [1] : 0.93785423854095	 Interval [0.8-1]: 0.9281025657998
+Final RMSE: 0.93785423854095
