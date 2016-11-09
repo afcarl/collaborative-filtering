@@ -5,8 +5,8 @@ A small project involving Collaborative filtering
 ## Autoencoder in Torch
 
 ### Links
-![http://www.grappa.univ-lille3.fr/~mary/cours/stats/centrale/reco/](Data exploration, SVD/ALS Baseline)
-![https://github.com/fstrub95/torch.github.io/blob/master/blog/_posts/2016-02-21-cfn.md](introduction Autoencoder for collaboration filtering)
+[Data exploration, SVD/ALS Baseline](http://www.grappa.univ-lille3.fr/~mary/cours/stats/centrale/reco/)
+[introduction Autoencoder for collaboration filtering](https://github.com/fstrub95/torch.github.io/blob/master/blog/_posts/2016-02-21-cfn.md)
 
 ### Install
 ```
