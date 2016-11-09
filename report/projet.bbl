@@ -1,0 +1,14 @@
+\begin{thebibliography}{1}
+
+\bibitem{strub2016hybrid}
+Florian Strub, Jeremie Mary, and Romaric Gaudel.
+\newblock Hybrid collaborative filtering with autoencoders.
+\newblock {\em arXiv preprint arXiv:1603.00806}, 2016.
+
+\bibitem{zhou2008large}
+Yunhong Zhou, Dennis Wilkinson, Robert Schreiber, and Rong Pan.
+\newblock Large-scale parallel collaborative filtering for the netflix prize.
+\newblock In {\em International Conference on Algorithmic Applications in
+  Management}, pages 337--348. Springer, 2008.
+
+\end{thebibliography}

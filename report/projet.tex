@@ -1,0 +1,79 @@
+\documentclass[10pt,twocolumn]{article}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{geometry}
+
+
+
+\setlength{\voffset}{-0.9in}
+\setlength{\headsep}{0pt}
+
+
+
+\title{TC1 Project: Know your customers}
+
+\author{Aris Tritas, Laurent Cetinsoy}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+A collaborating filter problem is addressed with the following methods: NMF approach and autoencoders.
+
+\end{abstract}
+
+\section{Introduction}
+
+In collaborative filtering, each item of a collection $n_i$ is rated by several members of a population $n_u$. The aim is to predict the item ratings that a person would give. The usually final goal is to recommend items to a user that he would have rated with a high score. 
+
+In this setup, let $R$ be a $(n * m)$ matrix where $r_{ij}$ is the rating of the $j^{th}$  item from the $i^{th}$ user.
+
+\subsection{Non negative matrix factorization}
+
+In non negative factorizations the rating product matrix is factorized to $R = UV$ where coefficients of U and V are non negatives. 
+
+In order to find such matrix a reconstruction error is minimized by gradient descent : 
+
+$$ argmin_{U,V} ( ||R - UV||_{non negative coefficients} ) $$ 
+
+The reconstruction error is computed over all non negative coefficient of the R matrix. In other words, the algorithm try to recover the available ratings only. 
+
+Comment on est sur que les coefficients soient positifs ?
+
+\subsection{ALS-WR}
+
+The ALS-WR algorithm \cite{zhou2008large} differs from NMF for two main reasons: a regulirazation term and the fact that the gradient descent is done by alternatively updating U and fixing V then, updating V and fixing U. 
+
+
+
+\subsection{Auto-encoders}
+
+Auto encoder is neural network (NN) approach used in unsupervised learning for dimensionality reduction. Used in the supervised classification task NN aimes at lowering a prediction error over a training set. Auto encoder aimes at lowering the reconstruction error, ie Lowering $$ || X - NN(X) || $$. 
+
+We used the approach proposed by \cite{strub2016hybrid} to our collaborating filter problem. 
+
+\section{Result}
+
+\begin{tabular}{|l|c|r|}
+  \hline
+  NMF & ALS-WR & AE \\
+  \hline
+  1.1 & 1.2 & 1.3 \\
+  
+  \hline
+\end{tabular}
+
+
+\section{Conclusion}
+
+[1] Yunhong Zhou, Dennis Wilkinson, Robert Schreiber and Rong Pan - Large-scale Parallel Collaborative Filtering for the Netflix Prize.
+
+\bibliographystyle{plain}
+\bibliography{biblio} % mon fichier de base de données s'appelle bibli.bib
+
+
+\end{document}
