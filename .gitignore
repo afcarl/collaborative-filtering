@@ -1,3 +1,4 @@
 # -*- mode: gitignore -*-
 .idea
 Autoencoders_cf
+*.xz
