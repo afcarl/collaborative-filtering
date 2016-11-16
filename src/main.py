@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 from joblib import dump, load
 from scipy.sparse import csc_matrix
+from scipy.sparse.linalg import svds
 
 from .matrix_factorization import run_nmf
-from .svd import compute_svd
 
 data_dir = os.path.split(os.path.realpath(__file__))[0] + "/../input"
 
@@ -138,7 +138,7 @@ if __name__ == "__main__":
         dump((training_mat, validation_set), data_file)
 
     # Run k-SVD
-    p, d, q = compute_svd(training_mat, 40)
+    p, d, q = svds(training_mat, 40)
 
     ''' Run and save params '''
     if os.path.exists(nmf_model_file + '.xz'):
