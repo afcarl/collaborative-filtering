@@ -20,8 +20,8 @@
 
 \begin{abstract}
 
-We are given a training set describing the ratings assigned by customers to items (e.g a firm's services). 
-A collaborating filter problem is addressed with the following methods: NMF approach and autoencoders.
+The objective of this analysis is to predict a rating that would be assigned by customers to items (which could be e.g. a firm's services). 
+The problem was designed as a case of sequential prediction. Moreover, it can be viewed as a collaborating filtering. It is solved using the following methods: firstly, an Non-negative Matrix Factorization is applied. Then,  and autoencoders.
 
 \end{abstract}
 
@@ -32,6 +32,7 @@ In collaborative filtering, each item $i$ of a collection is rated by one or mor
 In this setup, let $R$ represent a $n \times m$ matrix. The rating of the $j^{th}$ item from the $i^{th}$ user is $r_{ij}$.
 
 \subsection{Data}
+We are given a training set describing the ratings assigned by customers to items in some given order.
 Dataset size: 2536705 examples in the training set, 1306637 in the test set. Total number of users 93705 (of which only 92088 are in the training set) and 3561 items. The dataset is very sparse,  less than $1\% $ of the ratings matrix is filled.
 Ratings distribution: [114214, 251596, 728518, 860463, 581913] In proportion of the total number of ratings: [0.0450, 0.0991, 0.2872, 0.3392, 0.2293].
 
@@ -41,33 +42,42 @@ It is possible to model the problem of sequential prediction using a hidden Mark
 
 In non negative factorizations we seek SPD matrices U and V such that the rating product matrix can be factorized as $R = UV^T$. It is possible to find such matrices that minimize the reconstruction error defined below by using an iterative optimization method (e.g gradient descent): 
 
-\begin{equation*}\begin{split}
+\begin{equation}
+\begin{split}
 \argmin_{U,V} & \frac{1}{2} ||R - UV||^2 \\
 			  + & \alpha \lambda_1 (||U||_1 + ||V||_1) \\
 			  + & \frac{1}{2} \alpha \lambda_2  (||U||^2 + ||V||^2) 
-\end{split}\end{equation*}  
+\end{split}
+\end{equation}  
 
 The reconstruction error is computed over all non negative coefficients of the R matrix. In other words, the algorithm only tries to recover the available ratings. 
 
 \subsection{ALS-WR}
 
-The Alternating Least Squares with Regularization algorithm \cite{zhou2008large} differs from NMF for two main reasons: a regularization term and the fact that the minimization is done by alternatively updating U while keeping V fixed and then updating V while keeping U fixed.
-
-The parameters used were $\lambda = 0.01$ and a latent dimension $d = 100$.
+The Alternating Least Squares with Regularization algorithm \cite{zhou2008large}  minimizes \eqref{1}, which is non-convex as both $U$ and $V$ are unknown. It does so by alternatively updating U while keeping V fixed and then updating V while keeping U fixed. The parameters used were $\lambda = 0.01$ and a latent dimension $d = 100$.
 
 
-\subsection{Auto-encoders}
+\subsection{Auto-encoder}
 
-The auto-encoder is a neural network approach used in unsupervised learning for dimensionality reduction. It aims at lowering the reconstruction error, which can be written as:
-$$ || X - NN(X) || $$. 
+The auto-encoder is a neural network approach used in unsupervised learning for dimensionality reduction. It optimizes the following loss function:
+
+$$ L_{2, \alpha, \beta} = \alpha ( \sum_{j \in \mathcal{C}(\tilde{x})} [ nn(\tilde{x}_j) - x_j ]^2 + \beta ( \sum_{j \ni \mathcal{C}(\tilde{x})} [nn(\tilde{x}_j) - x_j ]^2) + $$.
+where $ $ The first term is a loss over corrupted version of the inputs which the network seeks to denoise. The second term is the reconstruction loss.
 
 In the supervised classification task, the auto-encoder's objective is to lower a prediction error over a training set.
 
-The approach proposed by \cite{strub2016hybrid} was used to tackle our collaborating filter problem. Two different auto-encoders can be trained depending on whether the users or the items are considered as training cases. 
+The approach proposed by \cite{strub2016hybrid} was used to tackle our collaborating filter problem. Two different auto-encoders can be trained depending on whether the network seeks to make user or item vectors dense:
+\begin{itemize}
+\item U-CFN is defined as $\hat{\textbf{u}}_i = nn(\textbf{u}_i)$
+\item V-CFN is defined as $\hat{\textbf{v}}_j = nn(\textbf{v}_j)$ 
+\end{itemize}
 
-\section{Result}
-The metric used to evaluate the performance of a training method for this type of problem is either the RMSE (root mean squared error) or the MAE (mean absolute error). The scores below were computed on a validation set selected uniformly at random amongst the training set:
-\begin{tabular}{|l|c|c|r}
+\section{Temporal dynamics}
+One idea to add temporal dynamics is to bias either of the matrix factors.
+
+\section{Results}
+The metrics used to evaluate the performance of each training method for this type of problem is either the RMSE (root mean squared error) or the MAE (mean absolute error). The scores below represent the RMSE and were computed on a validation set selected uniformly at random amongst the training set:
+\begin{tabular}{|l|c|c|r|}
   \hline
   NMF & ALS-WR & User AE & Item AE \\
   \hline
@@ -77,8 +87,7 @@ The metric used to evaluate the performance of a training method for this type o
 
 
 \section{Conclusion}
-
-[1] Yunhong Zhou, Dennis Wilkinson, Robert Schreiber and Rong Pan - Large-scale Parallel Collaborative Filtering for the Netflix Prize.
+Different methods were compared in order to solve the problem of customer affinity prediction. When sparsity becomes an issue, no single method works best: exploiting the problem structure and combining multiple approaches has the potential of achieving the best results.
 
 \bibliographystyle{plain}
 \bibliography{biblio} % mon fichier de base de données s'appelle bibli.bib
