@@ -6,3 +6,5 @@ report/projet.log
 report/projet.out
 report/projet.synctex.gz
 doc/
+autoencoder/output/
+autoencoder/data/
