@@ -9,7 +9,7 @@ from joblib import dump, load
 from scipy.sparse import csc_matrix
 from scipy.sparse.linalg import svds
 
-from .matrix_factorization import run_nmf
+from src.matrix_factorization import run_nmf
 
 data_dir = os.path.split(os.path.realpath(__file__))[0] + "/../input"
 
@@ -54,6 +54,10 @@ def training_set_stats():
     s1, s2 = set(), set()
     hist = [0] * 5
     lines = 0
+    curr_usr = None
+    seq_count = 0
+    max_users = 2000
+
     with open(trainSet) as train_file:
         for line in train_file:
             if not lines:
@@ -70,6 +74,13 @@ def training_set_stats():
             s1.add(user)
             s2.add(item)
             lines += 1
+            if len(s1) < max_users:
+                if user == curr_usr:
+                    seq_count += 1
+                else:
+                    print("User {} rated {} items".format(curr_usr, seq_count))
+                    curr_usr = user
+                    seq_count = 0
 
     n_s1, n_s2 = len(s1), len(s2)
 
@@ -124,7 +135,7 @@ def test(w, h):
 
 
 if __name__ == "__main__":
-    # training_set_stats()
+    training_set_stats()
     # Files paths
     data_file = data_dir + '/matrices.xz'
     nmf_model_file = data_dir + '/model_params'

@@ -6,6 +6,7 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.metrics import mean_squared_error
 from joblib import Parallel, delayed
 
+
 def run_nmf(matrix, init_='nndsvdar', alpha_=0.01, l1_ratio_=0.1, latent_dim=50):
     """ Find W and H such that  W H.T ~ matrix with error minimized /!\ Chaque run utilise 3860Mb """
     estimator = nmf.NMF(n_components=latent_dim,
