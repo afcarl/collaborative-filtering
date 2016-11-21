@@ -6,7 +6,7 @@ A small project involving Collaborative filtering
 
 ### Links
 [Data exploration, SVD/ALS Baseline](http://www.grappa.univ-lille3.fr/~mary/cours/stats/centrale/reco/)
-[introduction Autoencoder for collaboration filtering](https://github.com/fstrub95/torch.github.io/blob/master/blog/_posts/2016-02-21-cfn.md)
+[Autoencoders for collaborative filtering](https://github.com/fstrub95/torch.github.io/blob/master/blog/_posts/2016-02-21-cfn.md)
 
 ### Install
 ```
@@ -14,9 +14,16 @@ CC=gcc-4.8 CXX=g++4.8 luarocks install cutorch
 ```
 
 
-### Run
+### Running the network
+Start by parsing the ratings file into a torch data file:
 ```
 th data.lua  -ratings ../../input/customeraffinity.train -out ../../input/customer-train.t7 -fileType movieLens -ratio 0.9
-th main.lua  -file ../../input/customer-train.t7 -conf ../conf/conf.movieLens.10M.U.lua  -save network.t7 -type V -meta 0 -gpu 1
-th computeMetrics.lua -file ../../input/customer-train.t7 -network network.t7 -type V -gpu 1
+```
+Run the network using a neural net configuration:
+```
+th main.lua  -file ../../input/customer-train.t7 -conf ../conf/conf.ratings.U.lua  -save ../output/network.R.t7 -type V -meta 0 -gpu 0
+```
+Compute metrics with the final network weights:
+```
+th computeMetrics.lua -file ../../input/customer-train.t7 -network ../output/network.R.t7 -type V -gpu 1
 ```

@@ -91,13 +91,13 @@ function TrainNetwork(train, test, info, config)
       if string.starts(key, "layer") then
 
          noLayer = noLayer + 1
+
          for k = noLayer, 1, -1 do 
 
             --Retrieve configuration      
             local step    = noLayer-k+1
             local sgdConf = confLayer[step]
             sgdConf.name = key .. "-" .. step 
-            
 
             --if no epoch, skip!
             if sgdConf.noEpoch > 0 then  

@@ -46,4 +46,8 @@ k = 1000
 RMSE=1879.1248362576696 in 306 iterations
 Validation RMSE=3.7034030531003137
 
+alpha = 0.001, l2-reg, k = 100
+Reconstruction error = 2912.6541222741484 in 888 iterations
+Validation RMSE=3.5591329019988605
+
 

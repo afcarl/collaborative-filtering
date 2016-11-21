@@ -135,7 +135,7 @@ def test(w, h):
 
 
 if __name__ == "__main__":
-    training_set_stats()
+    #training_set_stats()
     # Files paths
     data_file = data_dir + '/matrices.xz'
     nmf_model_file = data_dir + '/model_params'
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     if os.path.exists(nmf_model_file + '.xz'):
         (W, H) = load(nmf_model_file + '.xz')
     else:
-        (W, H), err, (_, _, _, _, iters) = run_nmf(training_mat, l1_ratio_=0.5, latent_dim=40, init_='nndsvd')
+        (W, H), err, (_, _, _, _, iters) = run_nmf(training_mat)
         dump((W, H), "{}_{}_{}.xz".format(nmf_model_file, int(err), 1 - p_valid))
         print("Reconstruction error = {} in {} iterations".format(err, iters))
 

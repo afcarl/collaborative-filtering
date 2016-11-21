@@ -7,27 +7,26 @@ config =
    useMetadata = false,
    layer1 =
    {
-      layerSize = 1500, -- doubled layer size
+      layerSize = 700,
       {
          criterion = cfn.SDAECriterionGPU(nn.MSECriterion(),
          {
-            alpha = 0.557842557215, -- divided alpha by 2
-            beta  = 1.0,
-            hideRatio = 0.2, -- bigger dropout
+            alpha = 1,
+            beta  = 0.8,
+            hideRatio = 0.20,
          }),
-         noEpoch = 15,
-         miniBatchSize = 35,
-         learningRate = 0.090054066465632,
-         learningRateDecay = 0.17623840298814,
-         weightDecay = 0.025113243590272,
-         momentum = 0.9 -- added momentum term
+         noEpoch = 1,
+         miniBatchSize = 20,
+         learningRate = 0.03,
+         learningRateDecay = 0.1,
+         weightDecay = 0.03,
       },
 
    },
 
    layer2 =
    {
-      layerSize = 750, -- +50% layer size
+      layerSize = 500,
       {
          criterion = cfn.SDAECriterionGPU(nn.MSECriterion(),
          {
@@ -36,9 +35,9 @@ config =
             noiseRatio = 0.2,
             noiseStd  = 0.02,
          }),
-         noEpoch = 5,
+         noEpoch = 40,
          miniBatchSize = 5,
-         learningRate  = 1e-5,
+         learningRate  = 1e-4,
          learningRateDecay = 0.1,
          weightDecay = 0.2,
          momentum = 0.8
@@ -47,15 +46,16 @@ config =
       {
          criterion = cfn.SDAECriterionGPU(nn.MSECriterion(),
          {
-            beta = 0.98560892462868,
-            alpha  = 0.58072139311116,
-            hideRatio = 0.1767389068742,
+            alpha = 1.2,
+            beta  = 0.8,
+            noiseRatio = 0,
+            hideRatio = 0.20,
          }),
          noEpoch = 15,
-         miniBatchSize = 25,
-         learningRate  = 0.015696778637008,
-         learningRateDecay = 0.25096496415014,
-         weightDecay = 0.045386821936839,
+         miniBatchSize = 20,
+         learningRate  = 0.003,
+         learningRateDecay = 0.2,
+         weightDecay = 0.03,
 
       },
 
@@ -64,5 +64,5 @@ config =
    layer3 = nil
 
 }
-return config
 
+return config
