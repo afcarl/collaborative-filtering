@@ -7,27 +7,27 @@ config =
    useMetadata = false,
    layer1 =
    {
-      layerSize = 1500,
+      layerSize = 1500, -- doubled layer size
       {
          criterion = cfn.SDAECriterionGPU(nn.MSECriterion(),
          {
-            alpha = 0.557842557215,
+            alpha = 0.557842557215, -- divided alpha by 2
             beta  = 1.0,
-            hideRatio = 0.2,
+            hideRatio = 0.2, -- bigger dropout
          }),
          noEpoch = 15,
          miniBatchSize = 35,
          learningRate = 0.090054066465632,
          learningRateDecay = 0.17623840298814,
          weightDecay = 0.025113243590272,
-         momentum = 0.9
+         momentum = 0.9 -- added momentum term
       },
 
    },
 
    layer2 =
    {
-      layerSize = 750,
+      layerSize = 750, -- +50% layer size
       {
          criterion = cfn.SDAECriterionGPU(nn.MSECriterion(),
          {

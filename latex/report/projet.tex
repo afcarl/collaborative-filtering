@@ -5,8 +5,7 @@
 \usepackage{cite}
 \usepackage{geometry}
 \usepackage{amsmath}
-\setlength{\voffset}{-0.9in}
-\setlength{\headsep}{0pt}
+
 
 \DeclareMathOperator*{\argmin}{arg\,min}
 
@@ -36,9 +35,9 @@ We are given a training set describing the ratings assigned by customers to item
 Dataset size: 2536705 examples in the training set, 1306637 in the test set. Total number of users 93705 (of which only 92088 are in the training set) and 3561 items. The dataset is very sparse,  less than $1\% $ of the ratings matrix is filled.
 Ratings distribution: [114214, 251596, 728518, 860463, 581913] In proportion of the total number of ratings: [0.0450, 0.0991, 0.2872, 0.3392, 0.2293].
 
-\subsection{Hidden Markov Model}
+\section{Hidden Markov Model}
 It is possible to model the problem of sequential prediction using a hidden Markov model. In order to do that efficiently, it is assumed that 
-\subsection{Non negative matrix factorization}
+\section{Non negative matrix factorization}
 
 In non negative factorizations we seek SPD matrices U and V such that the rating product matrix can be factorized as $R = UV^T$. It is possible to find such matrices that minimize the reconstruction error defined below by using an iterative optimization method (e.g gradient descent): 
 
@@ -57,12 +56,17 @@ The reconstruction error is computed over all non negative coefficients of the R
 The Alternating Least Squares with Regularization algorithm \cite{zhou2008large}  minimizes \eqref{1}, which is non-convex as both $U$ and $V$ are unknown. It does so by alternatively updating U while keeping V fixed and then updating V while keeping U fixed. The parameters used were $\lambda = 0.01$ and a latent dimension $d = 100$.
 
 
-\subsection{Auto-encoder}
+\section{Auto-encoder}
 
 The auto-encoder is a neural network approach used in unsupervised learning for dimensionality reduction. It optimizes the following loss function:
 
-$$ L_{2, \alpha, \beta} = \alpha ( \sum_{j \in \mathcal{C}(\tilde{x})} [ nn(\tilde{x}_j) - x_j ]^2 + \beta ( \sum_{j \ni \mathcal{C}(\tilde{x})} [nn(\tilde{x}_j) - x_j ]^2) + $$.
-where $ $ The first term is a loss over corrupted version of the inputs which the network seeks to denoise. The second term is the reconstruction loss.
+\begin{equation}
+\begin{split}
+L_{2, \alpha, \beta} = &\alpha ( \sum_{j \in \mathcal{C}(\tilde{x})} [ nn(\tilde{x}_j) - x_j ]^2 \\
++ & \beta ( \sum_{j \notin \mathcal{C}(\tilde{x})} [nn(\tilde{x}_j) - x_j ]^2)
+\end{split}
+\end{equation}
+where $\mathcal{C}(\tilde{x})$ The first term is a loss over corrupted version of the inputs which the network seeks to denoise. The second term is the reconstruction loss.
 
 In the supervised classification task, the auto-encoder's objective is to lower a prediction error over a training set.
 
@@ -73,7 +77,10 @@ The approach proposed by \cite{strub2016hybrid} was used to tackle our collabora
 \end{itemize}
 
 \section{Temporal dynamics}
-One idea to add temporal dynamics is to bias either of the matrix factors.
+In the context of matrix factorization, an idea is to add temporal dynamics is to bias either sides of the matrix factors. In the context of the auto-encoder, there are two possibilities: either create multiple examples for each user incrementally augmented with entries from the rated items sequence, or add the sequence information as additional (summed or averaged) features \cite{youtube2016}.
+
+\section{Implicit side information}
+Another source of information the model can take into account is the fact that the test set provides entries indicating which items have further been rated. This information can be integrated following \cite{salakhutdinov2007restricted}.
 
 \section{Results}
 The metrics used to evaluate the performance of each training method for this type of problem is either the RMSE (root mean squared error) or the MAE (mean absolute error). The scores below represent the RMSE and were computed on a validation set selected uniformly at random amongst the training set:

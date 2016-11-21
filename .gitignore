@@ -1,7 +1,14 @@
 # -*- mode: gitignore -*-
 .idea/
 *.xz
-*.(aux|out|synctex.gz|bbl|blg|dvi|pdf)
+*.aux
+*.synctex.gz
+*.bbl
+*.blg
+*.dvi
+*.pdf
+latex/*/*.out
+latex/*/*.log
 doc/
 autoencoder/output/
 autoencoder/data/

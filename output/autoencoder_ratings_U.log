@@ -1,0 +1,74 @@
+th main.lua  -file ../../input/customer-train.t7 -conf ../conf/conf.ratings.U.lua  -save network.R.U.t7 -type U -meta 0 -gpu 0
+Options: 	
+ - gpu  	 : 0	
+ - file  	 : ../../input/customer-train.t7	
+ - seed  	 : 0	
+ - save  	 : network.R.U.t7	
+ - conf  	 : ../conf/conf.ratings.U.lua	
+ - type  	 : U	
+ - meta  	 : 0	
+Load training configuration...	
+Load data...	
+Loading data from disk...	
+	
+Users loaded      : 92088	
+Items loaded      : 3561	
+	
+No Train ratings  : 2282399	
+No Test  ratings  : 254305	
+Training ratio    : 0.89974983285397	
+Training density  : 0.0069601172178909	
+	
+Unbias the data...	
+Data was successfully preloaded...	
+Training network	
+Start training : layer1-1	
+nn.Sequential {
+  [input -> (1) -> (2) -> (3) -> (4) -> output]
+  (1): nnsparse.SparseLinearBatch(3561 -> 1500)
+  (2): nn.Tanh
+  (3): nn.Linear(1500 -> 3561)
+  (4): nn.Tanh
+}
+ [===>............................ 1/15 .................................] ETA: 0ms | Step: 0ms          
+[1]+  Done                    /home/aris/Applications/pycharm-2016.2.3/bin/pycharm.sh  (wd: ~)
+(wd now: ~/Documents/aauni/ML16/Projet/Problem4/autoencoder/src)
+1/15	 RMSE : 0.95211379435969	 MAE : 0.74350677190869	
+ [========>....................... 2/15 .................................] ETA: 1h35m | Step: 7m20s      
+2/15	 RMSE : 0.95178588324201	 MAE : 0.74351407905907	
+ [=============>.................. 3/15 .................................] ETA: 1h24m | Step: 7m3s       
+3/15	 RMSE : 0.95162732872227	 MAE : 0.74367712302665	
+ [=================>.............. 4/15 .................................] ETA: 1h17m | Step: 7m2s       
+4/15	 RMSE : 0.95129651177919	 MAE : 0.743127058244	
+ [======================>......... 5/15 .................................] ETA: 1h8m | Step: 6m52s       
+5/15	 RMSE : 0.95081037807305	 MAE : 0.74308895357316	
+ [===========================>.... 6/15 .................................] ETA: 1h1m | Step: 6m47s       
+6/15	 RMSE : 0.95032249454383	 MAE : 0.74241583553124	
+ [================================ 7/15 .................................] ETA: 53m48s | Step: 6m43s     
+7/15	 RMSE : 0.95045056336529	 MAE : 0.7420911362029	
+ [================================ 8/15 .................................] ETA: 46m39s | Step: 6m39s     
+8/15	 RMSE : 0.94954093623366	 MAE : 0.74175118204387	
+ [================================ 9/15 ===>.............................] ETA: 39m50s | Step: 6m38s     
+9/15	 RMSE : 0.94999935982009	 MAE : 0.74237928070171	
+ [================================ 10/15 =======>........................] ETA: 33m2s | Step: 6m36s      
+10/15	 RMSE : 0.94980946735559	 MAE : 0.74187328599576	
+ [================================ 11/15 ============>...................] ETA: 26m16s | Step: 6m34s     
+11/15	 RMSE : 0.94945664054388	 MAE : 0.74153552149978	
+ [================================ 12/15 ================>...............] ETA: 19m39s | Step: 6m33s     
+12/15	 RMSE : 0.95023758814092	 MAE : 0.74295079138389	
+ [================================ 13/15 =====================>..........] ETA: 13m3s | Step: 6m31s      
+13/15	 RMSE : 0.94970998567615	 MAE : 0.74211120564843	
+ [================================ 14/15 ==========================>.....] ETA: 6m31s | Step: 6m31s      
+14/15	 RMSE : 0.94963610724624	 MAE : 0.74227073527411	
+ [================================ 15/15 ===============================>] Tot: 1h31m | Step: 6m30s      
+	
+15/15	 RMSE : 0.94964555159449	 MAE : 0.74224799018213	
+/home/aris/Code/distro/install/bin/luajit: tools/CFNTools.lua:68: bad argument #2 to 'new' (number expected, got nil)
+stack traceback:
+	[C]: in function 'new'
+	tools/CFNTools.lua:68: in function 'forward'
+	misc/TrainNetwork.lua:140: in function 'TrainNetwork'
+	main.lua:69: in main chunk
+	[C]: in function 'dofile'
+	...ode/distro/install/lib/luarocks/rocks/trepl/scm-1/bin/th:145: in main chunk
+	[C]: at 0x00405b90
