@@ -6,161 +6,97 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from joblib import dump, load
-from scipy.sparse import csc_matrix
+from scipy.sparse import csc_matrix, csr_matrix, lil_matrix
 from scipy.sparse.linalg import svds
+from sklearn.model_selection import train_test_split
 
-from src.matrix_factorization import run_nmf
+from matrix_factorization import run_nmf
 
-data_dir = os.path.split(os.path.realpath(__file__))[0] + "/../input"
+data_dir = os.path.join(os.path.split(os.path.realpath(__file__))[0], "..", "input")
 
-trainSet = data_dir + "/customeraffinity.train"
-scoreSet = data_dir + "/customeraffinity.score"
+trainSet = os.path.join(data_dir, "customeraffinity.train")
+scoreSet = os.path.join(data_dir, "customeraffinity.score")
 
 preprocess = lambda x: (float(x) - 3) / 2
 postprocess = lambda x: 2 * x + 3
 
 
-def import_train(pr_valid=0.1, do_preprocess=False, ret_sp=False):
-    train_mat = np.zeros((93705, 3562), dtype=np.int32)
-    valid_mat = np.zeros((93705, 3562), dtype=np.int32)
+def import_matrix(pr_valid=0.1, do_preprocess=False, return_sparse=False):
+    train_mat = csr_matrix((93705, 3562), dtype=np.int32)
+    valid_mat = csr_matrix((93705, 3562), dtype=np.int32)
 
-    with open(trainSet) as train_file:
-        lines = train_file.readlines()
-        for line in lines[1:]:
-            splits = [int(s) for s in line.split(",")]
-            rating = preprocess(splits[2] - 1) if do_preprocess else splits[2] - 1
-            if np.random.binomial(1, pr_valid):
-                valid_mat[splits[0], splits[1]] = rating
-            else:
-                train_mat[splits[0], splits[1]] = rating
+    tbl = pd.read_table(trainSet, sep=',', header=None)
+    tbl.iloc[:, -1].apply(preprocess)
+    
+    train_items, val_items = train_test_split(tbl, test_size=0.3)
 
-        print("Data has {} samples, {} for validation.".format(len(lines), np.count_nonzero(valid_mat)))
-    if ret_sp:
-        train_mat = csc_matrix(train_mat)
-        valid_mat = csc_matrix(valid_mat)
+    if not return_sparse:
+        train_mat = train_mat.toarray()
+        valid_mat = valid_mat.toarray()
     return train_mat, valid_mat
 
+def to_matrix(tbl):
+    user_arr = tbl.iloc[:, 0].values
+    item_arr = tbl.iloc[:, 1].values
+    data = tbl.iloc[:, -1].values
 
-def import_sequence(max_items=None):
-    # tbl = pd.read_table(trainSet, sep=',')
-    training_set = np.zeros(3562, dtype=np.int32)
-    client_vector = np.zeros(3562, dtype=np.float32)
-    with open(trainSet) as train_file:
-        lines = train_file.readlines()
-        curr_client = 0
-        for i, line in enumerate(lines[1:]):
-            splits = [int(s) for s in line.split(",")]
-            rating = preprocess(splits[2] - 1)
-            if splits[0] == curr_client:
-                pass
-            else: # changed clients
-                client_vector = np.zeros(3562, dtype=np.float32)
-                curr_client = splits[0]
-            client_vector[splits[1]] = rating
-            training_set = np.vstack((training_set, client_vector))
-            if max_items and i > max_items : break
-    return training_set
+    matrix = csr_matrix(data, (user_arr, item_arr))
+    return matrix
+    
 
+# ---- Data as sequences of ratings
+
+def import_sequence(max_items=None, val_ratio=0.1):
+    tbl = pd.read_table(trainSet, sep=',', header=None)
+    tbl.iloc[:, -1].apply(preprocess)
+    train_seq, val_seq = train_test_split(tbl, test_size=val_ratio)
+    n_train = max_items or len(train_seq)
+    training_set = lil_matrix((n_train, 3562), dtype=np.float32)
+    
+    curr_client = 0
+    rating_lst = []
+
+    for i in range(n_train):
+        user, item, rating = train_seq.iloc[i]
+
+        if user == curr_client:
+            rating_lst.append((item, rating))
+        else:  # changed clients
+            if rating_lst:
+                for j in range(len(rating_lst)):
+                    for (it, r) in rating_lst[:j]:
+                        training_set[i, it] = r
+                    #else:
+                    #    validation_set.append((rating_lst[:j], rating_lst[j]))
+                rating_lst = []
+            curr_client = user
+
+        if max_items and i > max_items:
+            break
+        elif i % 100000 == 0:
+            print("Processed {} lines".format(i))
+
+    return training_set, val_seq
+
+def get_sequence_sparse_vectors(max_items=None):
+    data_file = os.path.join(data_dir, 'seq_data.bz2')
+    if os.path.exists(data_file):
+        train, val = load(data_file)
+    else:
+        train, val = import_sequence(max_items)
+        dump((train, val), data_file)
+    return train, val
+
+# ---- Testing data
 
 def import_test():
     tbl = pd.read_table(scoreSet)
     user_arr = tbl.iloc[:, 1].values
     item_arr = tbl.iloc[:, 2].values
-    data = np.ones(len(item_arr))
+    data = np.empty(len(item_arr))
+    data.fill(preprocess(0))
     test_matrix = csc_matrix(data, (user_arr, item_arr))
     return test_matrix
-
-
-def training_set_stats():
-    """
-    Load customer affinity data (train and test sets), convert item to sparse matrix
-    :return: train and test sparse matrices
-    """
-    item_multiplicities = defaultdict(int)
-    user_multiplicities = defaultdict(int)
-    m1, m2 = 0, 0
-    s1, s2 = set(), set()
-    hist = [0] * 5
-    lines = 0
-    curr_usr = None
-    seq_count = 0
-    max_users = 2000
-
-    with open(trainSet) as train_file:
-        for line in train_file:
-            if not lines:
-                lines += 1
-                continue
-            splits = [int(s) for s in line.split(",")]
-            item = splits[1]
-            user = splits[0]
-            item_multiplicities[item] += 1
-            user_multiplicities[user] += 1
-            m1 = max(m1, user)
-            m2 = max(m2, item)
-            hist[splits[2] - 1] += 1
-            s1.add(user)
-            s2.add(item)
-            lines += 1
-            if len(s1) < max_users:
-                if user == curr_usr:
-                    seq_count += 1
-                else:
-                    print("User {} rated {} items".format(curr_usr, seq_count))
-                    curr_usr = user
-                    seq_count = 0
-
-    n_s1, n_s2 = len(s1), len(s2)
-
-    print("Number of entries: {}".format(lines))
-    print("Max ids are {} and {}".format(m1, m2))
-    print("Number of unique ids are {} and {}".format(n_s1, n_s2))
-    print("Sparsity = {}".format(lines / (n_s1 * n_s2)))  # How sparse is the data?
-
-    plt.scatter(np.arange(5), hist)
-    plt.show()
-
-    hist = [round(h / sum(hist), 4) for h in hist]
-    print(hist)
-    item_dist = np.array(list(item_multiplicities.values()))
-    user_dist = np.array(list(user_multiplicities.values()))
-    print_moments(item_dist)
-    print_moments(user_dist)
-
-    # Number of times each item was seen
-    plt.hist(item_dist, bins=100)
-    plt.show()
-    # Number of times each user was seen
-    plt.hist(user_dist, bins=100)
-    plt.show()
-
-
-def print_moments(distrib):
-    print('Min = {}, Max = {}, Mean = {}, Median = {}, Var = {}, Std = {}'.format(distrib.min(),
-                                                                                  distrib.max(),
-                                                                                  distrib.mean().round(1),
-                                                                                  np.median(distrib),
-                                                                                  distrib.var().round(1),
-                                                                                  distrib.std().round(1)))
-
-
-def validation_rmse(w, h, validation_ratings):
-    return np.sqrt(np.mean([(np.dot(w[user], h.T[item]) - rating) ** 2 for (user, item, rating) in validation_ratings]))
-
-
-def test(w, h):
-    with open(scoreSet) as test_file:
-        lines = test_file.readlines()
-        test_ratings = np.empty(len(lines) - 1, dtype=np.float64)
-        for i, line in enumerate(lines[1:]):
-            splits = [int(s) for s in line.split(",")]
-            test_ratings[i] = np.dot(w[splits[1]], h.T[splits[2]])
-        # Plot the distribution
-        plt.hist(test_ratings, bins=100)
-        plt.show()
-
-        return test_ratings
-
 
 if __name__ == "__main__":
     # training_set_stats()
@@ -187,6 +123,6 @@ if __name__ == "__main__":
         dump((W, H), "{}_{}_{}.xz".format(nmf_model_file, int(err), 1 - p_valid))
         print("Reconstruction error = {} in {} iterations".format(err, iters))
 
-    validation_score = validation_rmse(W, H, validation_set)
+    validation_score = mf_val_rmse(W, H, validation_set)
     print("Validation RMSE={}".format(validation_score))
     test(W, H)

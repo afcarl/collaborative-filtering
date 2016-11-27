@@ -1,4 +1,6 @@
 # -*- mode: gitignore -*-
+*.*~
+*.py[oc]
 .idea/
 *.xz
 *.aux
@@ -8,9 +10,11 @@
 *.dvi
 *.pdf
 *.t7
+*.bz2
 latex/*/*.out
 latex/*/*.log
 doc/
 autoencoder/output/
 autoencoder/data/
 __pycache__/
+.ipynb_checkpoints
