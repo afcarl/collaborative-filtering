@@ -16,22 +16,50 @@ data_dir = os.path.split(os.path.realpath(__file__))[0] + "/../input"
 trainSet = data_dir + "/customeraffinity.train"
 scoreSet = data_dir + "/customeraffinity.score"
 
+preprocess = lambda x: (float(x) - 3) / 2
+postprocess = lambda x: 2 * x + 3
 
-def import_train(pr_valid=0.1):
+
+def import_train(pr_valid=0.1, do_preprocess=False, ret_sp=False):
     train_mat = np.zeros((93705, 3562), dtype=np.int32)
-    validation_lst = []
+    valid_mat = np.zeros((93705, 3562), dtype=np.int32)
 
     with open(trainSet) as train_file:
         lines = train_file.readlines()
         for line in lines[1:]:
             splits = [int(s) for s in line.split(",")]
+            rating = preprocess(splits[2] - 1) if do_preprocess else splits[2] - 1
             if np.random.binomial(1, pr_valid):
-                validation_lst.append(tuple(splits))
+                valid_mat[splits[0], splits[1]] = rating
             else:
-                train_mat[splits[0], splits[1]] = splits[2] - 1
+                train_mat[splits[0], splits[1]] = rating
 
-        print("Data has {} samples, {} for validation.".format(len(lines), len(validation_lst)))
-    return csc_matrix(train_mat), validation_lst
+        print("Data has {} samples, {} for validation.".format(len(lines), np.count_nonzero(valid_mat)))
+    if ret_sp:
+        train_mat = csc_matrix(train_mat)
+        valid_mat = csc_matrix(valid_mat)
+    return train_mat, valid_mat
+
+
+def import_sequence(max_items=None):
+    # tbl = pd.read_table(trainSet, sep=',')
+    training_set = np.zeros(3562, dtype=np.int32)
+    client_vector = np.zeros(3562, dtype=np.float32)
+    with open(trainSet) as train_file:
+        lines = train_file.readlines()
+        curr_client = 0
+        for i, line in enumerate(lines[1:]):
+            splits = [int(s) for s in line.split(",")]
+            rating = preprocess(splits[2] - 1)
+            if splits[0] == curr_client:
+                pass
+            else: # changed clients
+                client_vector = np.zeros(3562, dtype=np.float32)
+                curr_client = splits[0]
+            client_vector[splits[1]] = rating
+            training_set = np.vstack((training_set, client_vector))
+            if max_items and i > max_items : break
+    return training_set
 
 
 def import_test():
@@ -135,7 +163,7 @@ def test(w, h):
 
 
 if __name__ == "__main__":
-    #training_set_stats()
+    # training_set_stats()
     # Files paths
     data_file = data_dir + '/matrices.xz'
     nmf_model_file = data_dir + '/model_params'

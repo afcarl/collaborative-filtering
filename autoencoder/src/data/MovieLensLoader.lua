@@ -105,7 +105,7 @@ function movieLensLoader:LoadMetaU(conf)
       end
       usersfile:close()
 
-      self.train.U.info.metaDim = self.train.U.info[1].full:size(1)
+   self.train.U.info.metaDim = self.train.U.info[1].full:size(1)
 
    end
 
@@ -158,7 +158,7 @@ local function genreToBinary(genreStr, offset)
       if genreIndex ~= nil then
         genre[genreIndex] = 1
       else
-        print("Unknow genre : " .. itemGenre )
+        print("Unknown genre : " .. itemGenre )
       end
       
    end
@@ -195,8 +195,9 @@ function movieLensLoader:LoadMetaV(conf)
         self.train.V.info[movieIndex] = info
       end
 
+      self.train.V.info.metaDim = self.train.V.info[1].full:size(1)
+
     end
-    self.train.V.info.metaDim = self.train.V.info[1].full:size(1)
   end
 
 
@@ -244,8 +245,11 @@ function movieLensLoader:LoadMetaV(conf)
       end
        
       moviesfile:close()
-      
-      self.train.V.info.metaDim = self.train.V.info[1].full:size(1)  
+
+      self.train.V.info.metaDim = self.train.V.info[1].full:size(1)
+
    end
+
+
 
 end

@@ -77,10 +77,10 @@ The approach proposed by \cite{strub2016hybrid} was used to tackle our collabora
 \end{itemize}
 
 \section{Temporal dynamics}
-In the context of matrix factorization, an idea is to add temporal dynamics is to bias either sides of the matrix factors. In the context of the auto-encoder, there are two possibilities: either create multiple examples for each user incrementally augmented with entries from the rated items sequence, or add the sequence information as additional (summed or averaged) features \cite{youtube2016}.
+In the context of matrix factorization, an idea is to add temporal dynamics is to bias either sides of the matrix factors. In the context of the neural networks, the idea is to preserver sequence information so as to learn to predict the next watch. The authors of \cite{youtube2016} predict the next item in the sequence instead of predicting a randomly held-out item. Specifically, for the auto-encoder, one approach would be to create multiple examples for each user by incrementally augmenting each input vector with entries from the rated items sequence and evaluating the network on the reconstruction of the future entry.
 
 \section{Implicit side information}
-Another source of information the model can take into account is the fact that the test set provides entries indicating which items have further been rated. This information can be integrated following \cite{salakhutdinov2007restricted}.
+Another source of information the model can take into account is the fact that the test set provides entries indicating which items have further been rated. This information can be integrated following \cite{salakhutdinov2007restricted}: the hidden units activations are conditioned on the visible units activations and a vector describing which items were seen but not rated.
 
 \section{Results}
 The metrics used to evaluate the performance of each training method for this type of problem is either the RMSE (root mean squared error) or the MAE (mean absolute error). The scores below represent the RMSE and were computed on a validation set selected uniformly at random amongst the training set:

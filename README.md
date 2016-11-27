@@ -21,7 +21,7 @@ th data.lua  -ratings ../../input/customeraffinity.train -out ../../input/custom
 ```
 Run the network using a neural net configuration:
 ```
-th main.lua  -file ../../input/customer-train.t7 -conf ../conf/conf.ratings.U.lua  -save ../output/network.R.t7 -type V -meta 0 -gpu 0
+th main.lua  -file ../../input/customer-train.t7 -conf ../conf/conf.ratings.U.lua  -save ../output/network.R.t7 -type U -meta 0 -gpu 0
 ```
 Compute metrics with the final network weights:
 ```

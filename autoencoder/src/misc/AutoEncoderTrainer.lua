@@ -63,7 +63,7 @@ function AutoEncoderTrainer:Train(sgdOpt, epoch)
       while noPicked <= sgdOpt.miniBatchSize and cursor < noSample-1 do
 
          local shuffledIndex = shuffle[cursor]
-         
+
          if train[shuffledIndex] then -- handle table that are not contiguous
             input[noPicked] = train[shuffledIndex]
             

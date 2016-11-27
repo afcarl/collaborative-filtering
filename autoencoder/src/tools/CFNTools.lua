@@ -63,8 +63,7 @@ function Batchifier:forward(data, batchSize)
 
    --Prepare minibatch
    local inputs   = {}
-   local outputs  = data[1].new(nFrame, self.outputSize) 
-   print(self.info)
+   local outputs  = data[1].new(nFrame, self.outputSize)
    local denseInfo  = data[1].new(batchSize, self.info.metaDim):zero()
    local sparseInfo = {}
    

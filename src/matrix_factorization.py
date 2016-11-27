@@ -30,10 +30,10 @@ def run_grid(data):
     }
     # also, http://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html
     # pipelines are efficient! http://scikit-learn.org/stable/modules/pipeline.html
-    randomized_search = GridSearchCV(nmf.NMF(max_iter=1000, shuffle=True), param_grid=params_dict, n_jobs=3,
+    clf = GridSearchCV(nmf.NMF(max_iter=1000, shuffle=True), param_grid=params_dict, n_jobs=3,
                                      scoring=mean_squared_error)
-    randomized_search.fit(data)
-    print(randomized_search.__dict__)
+    clf.fit(data)
+    return clf
 
 
 def run_grid2(data):

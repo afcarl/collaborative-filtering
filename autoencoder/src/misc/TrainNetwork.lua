@@ -4,6 +4,8 @@ function TrainNetwork(train, test, info, config)
    local metaDim = 0
    if config.use_meta then 
       metaDim = info.metaDim or 0
+   else -- fix issue in line 67 of CFNTools
+      info.metaDim = info.dimension
    end
 
    local bottleneck = {}
@@ -98,6 +100,7 @@ function TrainNetwork(train, test, info, config)
             local step    = noLayer-k+1
             local sgdConf = confLayer[step]
             sgdConf.name = key .. "-" .. step 
+
 
             --if no epoch, skip!
             if sgdConf.noEpoch > 0 then  
