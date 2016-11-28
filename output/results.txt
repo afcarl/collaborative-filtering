@@ -51,3 +51,14 @@ Reconstruction error = 2912.6541222741484 in 888 iterations
 Validation RMSE=3.5591329019988605
 
 
+Simple Keras Autoencoder results
+================================
+
+Encoding dimensions = 512
+Batch size = 50
+
+Epoch 1/2
+93705/93705 [==============================] - 183s - loss: 0.3525      
+Epoch 2/2
+93705/93705 [==============================] - 186s - loss: 0.0026     
+Final validation score on 253671 held out samples is 7.48873233795
