@@ -20,13 +20,14 @@ scoreSet = os.path.join(data_dir, "customeraffinity.score")
 preprocess = lambda x: (float(x) - 3) / 2
 postprocess = lambda x: 2 * x + 3
 
+R_SHAPE = (93705, 3561)
+
 
 def import_matrix(pr_valid=0.1, do_preprocess=False, return_sparse=True):
-    train_mat = csr_matrix((93705, 3562), dtype=np.int32)
-    valid_mat = csr_matrix((93705, 3562), dtype=np.int32)
-
     tbl = pd.read_table(trainSet, sep=',', header=None)
-    tbl.iloc[:, -1] = tbl.iloc[:, -1].apply(preprocess)
+
+    if do_preprocess:
+        tbl.iloc[:, -1] = tbl.iloc[:, -1].apply(preprocess)
 
     train_items, val_items = train_test_split(tbl, test_size=pr_valid)
 
@@ -40,12 +41,13 @@ def import_matrix(pr_valid=0.1, do_preprocess=False, return_sparse=True):
     return train_mat, valid_mat
 
 
-def to_matrix(tbl, shape=(93705, 3562)):
+def to_matrix(tbl, shape=R_SHAPE):
     user_arr = tbl.iloc[:, 0].values
     item_arr = tbl.iloc[:, 1].values
     data = tbl.iloc[:, -1].values
 
     matrix = csc_matrix((data, (user_arr, item_arr)))
+    print(matrix.shape)
 
     return matrix
 
@@ -110,7 +112,7 @@ def import_test():
 if __name__ == "__main__":
     # training_set_stats()
     # Files paths
-    data_file = data_dir + '/matrices.xz'
+    data_file = data_dir + '/matrices.bz2'
     nmf_model_file = data_dir + '/model_params'
     p_valid = 0.1
 
@@ -122,16 +124,18 @@ if __name__ == "__main__":
         dump((training_mat, validation_set), data_file)
 
     # Run k-SVD
-    p, d, q = svds(training_mat, 40)
+    # p, d, q = svds(training_mat, 40)
 
     ''' Run and save params '''
-    if os.path.exists(nmf_model_file + '.xz'):
-        (W, H) = load(nmf_model_file + '.xz')
+    if os.path.exists(nmf_model_file + '.bz2'):
+        print('Loading components from file.')
+        (W, H) = load(nmf_model_file + '.bz2')
     else:
+        print('Running NMF.')
         (W, H), err, (_, _, _, _, iters) = run_nmf(training_mat)
         dump((W, H), "{}_{}_{}.xz".format(nmf_model_file, int(err), 1 - p_valid))
         print("Reconstruction error = {} in {} iterations".format(err, iters))
 
     validation_score = mf_val_rmse(W, H, validation_set)
     print("Validation RMSE={}".format(validation_score))
-    test(W, H)
+    test(W, H, scoreSet)

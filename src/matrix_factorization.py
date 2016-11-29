@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-import sys
-from scipy.stats import uniform
+import matplotlib.pyplot as plt
+import numpy as np
 from sklearn.decomposition import nmf
-from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
+from sklearn.grid_search import GridSearchCV
 from sklearn.metrics import mean_squared_error
-from joblib import Parallel, delayed
 
 
-def run_nmf(matrix, init_='nndsvdar', alpha_=0.01, l1_ratio_=0.0, latent_dim=100):
+def run_nmf(matrix, init_='nndsvdar', alpha_=0.1, l1_ratio_=0.0, latent_dim=100):
     """ Find W and H such that  W H.T ~ matrix with error minimized
     /!\ Each run needs 4Gb of memory
     :param matrix: Matrix to be factorized
@@ -18,6 +17,7 @@ def run_nmf(matrix, init_='nndsvdar', alpha_=0.01, l1_ratio_=0.0, latent_dim=100
     :return: latent factorization, reconstruction error and number of iterationsx"""
     estimator = nmf.NMF(n_components=latent_dim, init=init_, max_iter=2000,
                         alpha=alpha_, l1_ratio=l1_ratio_, shuffle=True)
+    print(estimator.get_params())
     W = estimator.fit_transform(matrix)  # (n_samples, n_components)
     H = estimator.components_  # (n_components, n_features)
     return (W, H), estimator.reconstruction_err_, estimator.n_iter_
@@ -46,7 +46,7 @@ def mf_val_rmse(w, h, validation_ratings):
                             for (user, item, rating) in validation_ratings]))
 
 
-def test(w, h):
+def test(w, h, scoreSet):
     with open(scoreSet) as test_file:
         lines = test_file.readlines()
         test_ratings = np.empty(len(lines) - 1, dtype=np.float64)
