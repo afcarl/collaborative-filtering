@@ -13,8 +13,7 @@ function movieLensLoader:LoadRatings(conf)
    -- Step 1 : Retrieve movies'scores...th
    for line in ratesfile:lines() do
 
-      -- local userIdStr, movieIdStr, ratingStr = line:match('(%d+)::(%d+)::(%d%.?%d?)::(%d+)')
-      local userIdStr, movieIdStr, ratingStr = line:match('(%d+),(%d+),(%d+)')
+      local userIdStr, movieIdStr, ratingStr = line:match('(%d+)::(%d+)::(%d%.?%d?)::(%d+)')
       local userId  = tonumber(userIdStr)
       local itemId  = tonumber(movieIdStr)
       local rating  = tonumber(ratingStr)

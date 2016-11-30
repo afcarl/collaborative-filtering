@@ -2,7 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import nmf
-from sklearn.grid_search import GridSearchCV
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
 
 

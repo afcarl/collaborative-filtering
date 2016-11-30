@@ -15,7 +15,7 @@ config =
             beta  = 0.8,
             hideRatio = 0.20,
          }),
-         noEpoch = 1,
+         noEpoch = 15,
          miniBatchSize = 20,
          learningRate = 0.03,
          learningRateDecay = 0.1,
@@ -30,7 +30,7 @@ config =
       {
          criterion = cfn.SDAECriterionGPU(nn.MSECriterion(),
          {
-            alpha = 1,
+            alpha = 40,
             beta  = 0.8,
             noiseRatio = 0.2,
             noiseStd  = 0.02,

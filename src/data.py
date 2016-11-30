@@ -47,7 +47,6 @@ def to_matrix(tbl, shape=R_SHAPE):
     data = tbl.iloc[:, -1].values
 
     matrix = csc_matrix((data, (user_arr, item_arr)))
-    print(matrix.shape)
 
     return matrix
 
