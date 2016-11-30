@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
+from joblib import dump, load
+from scipy.sparse.linalg import svds
 from sklearn.decomposition import nmf
-from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import GridSearchCV
+
+from data import scoreSet, import_matrix, data_dir
 
 
 def run_nmf(matrix, init_='nndsvdar', alpha_=0.1, l1_ratio_=0.0, latent_dim=100):
@@ -59,4 +65,35 @@ def test(w, h, scoreSet):
 
         return test_ratings
 
-        
+def test_svd(matrix, dimension=40):
+    # Run k-SVD
+    p, d, q = svds(training_mat, 40)
+
+if __name__ == "__main__":
+    # training_set_stats()
+    # Files paths
+    data_file = data_dir + '/matrices.bz2'
+    nmf_model_file = data_dir + '/model_params'
+    p_valid = 0.1
+
+    # --- Load data
+    if os.path.exists(data_file):
+        training_mat, validation_set = load(data_file)
+    else:
+        training_mat, validation_set = import_matrix()
+        dump((training_mat, validation_set), data_file)
+
+
+    ''' Run and save params '''
+    if os.path.exists(nmf_model_file + '.bz2'):
+        print('Loading components from file.')
+        (W, H) = load(nmf_model_file + '.bz2')
+    else:
+        print('Running NMF.')
+        (W, H), err, (_, _, _, _, iters) = run_nmf(training_mat)
+        dump((W, H), "{}_{}_{}.xz".format(nmf_model_file, int(err), 1 - p_valid))
+        print("Reconstruction error = {} in {} iterations".format(err, iters))
+
+    validation_score = mf_val_rmse(W, H, validation_set)
+    print("Validation RMSE={}".format(validation_score))
+    test(W, H, scoreSet)

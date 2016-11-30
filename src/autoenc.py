@@ -10,40 +10,8 @@ from keras.regularizers import l2
 from keras.optimizers import Adadelta
 from sklearn.model_selection import train_test_split
 
-from data import postprocess, trainSet, preprocess, cached_sequence_data, import_sequence, import_matrix
-
-
-def batch_gen(x_train, batch_size):
-    total_samples = x_train.shape[0]
-    n_batches = total_samples / batch_size
-    i = 0
-    while True:
-        if i > n_batches: i = 0
-
-        x_in = x_train[i * batch_size:min((i + 1) * batch_size, total_samples), :].toarray()
-        x_test = x_train[i * batch_size + 1:min((i + 1) * batch_size + 1, total_samples), :].toarray()
-
-        diff = len(x_in) - len(x_test)
-        if diff: x_test = np.vstack((x_test, x_test[-diff:]))
-
-        yield (x_in, x_test)
-        i += 1
-
-
-def one_hot_encode(item, rating, input_dim, do_preprocess=False):
-    v = np.zeros((input_dim,), dtype=np.float32)
-    v[item] = rating
-    if do_preprocess:
-        preprocess_ = np.vectorize(preprocess)
-        v = preprocess_(v)
-    return v
-
-
-def sequence_encode(seq, input_dim):
-    v = np.zeros(input_dim, dtype=np.float32)
-    for (it, r) in seq:
-        v[it] = r
-    return v
+from data import postprocess, trainSet, preprocess, cached_sequence_data, import_sequence, import_matrix, batch_generator, \
+    one_hot_encode
 
 
 def masked_mse(do_preprocess=False):
@@ -97,14 +65,14 @@ class KerasBaseline(object):
         # loss=masked_mse(True))
 
     def fit_gen(self, x_train, epochs, n_samples_epoch, batch_size):
-        self.model.fit_generator(generator=batch_gen(x_train, batch_size),
+        self.model.fit_generator(generator=batch_generator(x_train, batch_size),
                                  nb_epoch=epochs, samples_per_epoch=n_samples_epoch,
                                  callbacks=[TensorBoard(log_dir='/tmp/autoencoder')])
 
     def predict_generator(self, X, batch_size):
         # encode and decode some ratings
         # note that we take them from the *test* set
-        batch_ratings = self.model.predict_generator(batch_gen(X, batch_size), 10 * batch_size)
+        batch_ratings = self.model.predict_generator(batch_generator(X, batch_size), 10 * batch_size)
         return batch_ratings
 
     def score_seq(self, validation_set, do_postprocess=False):
