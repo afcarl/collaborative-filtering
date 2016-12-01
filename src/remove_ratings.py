@@ -1,10 +1,8 @@
 import pandas as pd
 
-def remove_ratings(file_path, nFirstRatings, nLastRatings):
+def remove_ratings(file_path, nFirstRatings, nLastRatings, outputFile):
 
     tbl = pd.read_csv(file_path, names=['user', 'item', 'rating'])
-
-    tbl = tbl[0:20]
 
     n_rating = tbl.shape[0]
 
@@ -17,7 +15,7 @@ def remove_ratings(file_path, nFirstRatings, nLastRatings):
 
         iRating = 0
         nRatingOfUser = nRatingPerUser[tbl.iloc[iUser]['user']]
-        print(tbl.iloc[iUser]['user'], nRatingOfUser)
+
         if nFirstRatings + nLastRatings >= nRatingOfUser:
 
             iUser += nRatingOfUser
@@ -27,11 +25,16 @@ def remove_ratings(file_path, nFirstRatings, nLastRatings):
         iUser += nRatingOfUser
 
 
-    pd.DataFrame(ratings).to_csv('../input/test.csv', index=False)
+    pd.DataFrame(ratings).to_csv(outputFile, index=False)
 
 if __name__ == "__main__":
 
-    remove_ratings("../input/customeraffinity_last5000.train", 0, 1)
+    preShrunk =  20
+    postShrunk = 20
+
+    output = "input/customeraffinity500k_shrunk_%d_%d.csv" % (preShrunk, postShrunk)
+
+    remove_ratings("input/customeraffinity500k.train", preShrunk, postShrunk, output)
 
 
 
