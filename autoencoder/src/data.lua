@@ -51,7 +51,7 @@ end
 
 local dataLoader
 if     params.fileType == "movieLens" then dataLoader = cfn.movieLensLoader:new()
-elseif params.fileType == "alix"      then dataLoader = cfn.alixCustomersLoader:new()
+elseif params.fileType == "alix"      then dataLoader = cfn.alixLoader:new()
 elseif params.fileType == "classic"   then dataLoader = cfn.classicLoader:new()
 elseif params.fileType == "douban"    then dataLoader = cfn.doubanLoader:new()
 elseif params.fileType == "dummy"     then dataLoader = cfn.dummyLoader:new()

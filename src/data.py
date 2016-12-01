@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
-from collections import defaultdict
+from time import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from joblib import dump, load
-from scipy.sparse import csc_matrix, csr_matrix, lil_matrix
-from scipy.sparse.linalg import svds
+from scipy.sparse import csc_matrix
 from sklearn.model_selection import train_test_split
-
-from matrix_factorization import run_nmf, mf_val_rmse, test
 
 data_dir = os.path.join(os.path.split(os.path.realpath(__file__))[0], "..", "input")
 
@@ -20,13 +16,14 @@ scoreSet = os.path.join(data_dir, "customeraffinity.score")
 preprocess = lambda x: (float(x) - 3) / 2
 postprocess = lambda x: 2 * x + 3
 
+R_SHAPE = (93705, 3561)
+
 
 def import_matrix(pr_valid=0.1, do_preprocess=False, return_sparse=True):
-    train_mat = csr_matrix((93705, 3562), dtype=np.int32)
-    valid_mat = csr_matrix((93705, 3562), dtype=np.int32)
-
     tbl = pd.read_table(trainSet, sep=',', header=None)
-    tbl.iloc[:, -1] = tbl.iloc[:, -1].apply(preprocess)
+
+    if do_preprocess:
+        tbl.iloc[:, -1] = tbl.iloc[:, -1].apply(preprocess)
 
     train_items, val_items = train_test_split(tbl, test_size=pr_valid)
 
@@ -40,7 +37,7 @@ def import_matrix(pr_valid=0.1, do_preprocess=False, return_sparse=True):
     return train_mat, valid_mat
 
 
-def to_matrix(tbl, shape=(93705, 3562)):
+def to_matrix(tbl, shape=R_SHAPE):
     user_arr = tbl.iloc[:, 0].values
     item_arr = tbl.iloc[:, 1].values
     data = tbl.iloc[:, -1].values
@@ -52,29 +49,35 @@ def to_matrix(tbl, shape=(93705, 3562)):
 
 # ---- Data as sequences of ratings
 
-def import_sequence(max_items=None, val_ratio=0.1):
+def import_sequence(max_items=None, do_preprocess=False):
+
+    t0 = time()
+    # Read training data
     tbl = pd.read_table(trainSet, sep=',', header=None)
-    tbl.iloc[:, -1].apply(preprocess)
-    train_seq, val_seq = train_test_split(tbl, test_size=val_ratio)
-    n_train = max_items or len(train_seq)
-    training_set = lil_matrix((n_train, 3562), dtype=np.float32)
+    # Preprocess if needed
+    if do_preprocess: tbl.iloc[:, -1].apply(preprocess)
+
+    n_train = int(max_items) if max_items else len(tbl)
 
     curr_client = 0
-    rating_lst = []
+    user_hist = []
+    # typ: ((index, item), value)
+    row_indices = []  # np.empty(nnz_elts, dtype=np.int32)
+    col_indices = []
+    data = []
 
     for i in range(n_train):
-        user, item, rating = train_seq.iloc[i]
+        user, item, rating = tbl.iloc[i]
 
         if user == curr_client:
-            rating_lst.append((item, rating))
+            user_hist.append((item, rating))
+            items, ratings = zip(*user_hist)
+            n_seq = len(user_hist)
+            data.extend(ratings)
+            col_indices.extend(items)
+            row_indices.extend((i,) * len(items))
         else:  # changed clients
-            if rating_lst:
-                for j in range(len(rating_lst)):
-                    for (it, r) in rating_lst[:j]:
-                        training_set[i, it] = r
-                        # else:
-                        #    validation_set.append((rating_lst[:j], rating_lst[j]))
-                rating_lst = []
+            user_hist = []
             curr_client = user
 
         if max_items and i > max_items:
@@ -82,18 +85,60 @@ def import_sequence(max_items=None, val_ratio=0.1):
         elif i % 100000 == 0:
             print("Processed {} lines".format(i))
 
-    return training_set, val_seq
+    # Return sparse column matrix
+    matrix = csc_matrix((data, (row_indices, col_indices)))
+    print("[Loaded] {} sequences - took {} s".format(matrix.shape, time() - t0))
+
+    return matrix
 
 
-def cached_sequence_data(max_items=None):
-    data_file = os.path.join(data_dir, 'seq_data.bz2')
+def cached_sequence_data(max_items=None, filename='seq_data.bz2'):
+    data_file = os.path.join(data_dir, filename)
     if os.path.exists(data_file):
-        train, val = load(data_file)
+        t0 = time()
+        sequences = load(data_file)
+        print("[Loaded] {} from cache - took {}".format(data_file, time() - t0))
     else:
-        train, val = import_sequence(max_items)
-        dump((train, val), data_file)
-    return train, val
+        sequences = import_sequence(max_items)
+        dump(sequences, data_file)
+    return sequences
 
+
+def batch_generator(X, batch_size, sparse=True):
+    total_samples = X.shape[0]
+    n_batches = np.ceil(float(total_samples) / batch_size)
+    i = 0
+    while True:
+        if i > n_batches: i = 0
+
+        x_train = X[i * batch_size:min((i + 1) * batch_size, total_samples), :]
+        x_test = X[i * batch_size + 1:min((i + 1) * batch_size + 1, total_samples), :]
+
+        diff = len(x_train) - len(x_test)
+        if diff: x_test = np.vstack((x_test, x_test[-diff:]))
+
+        if sparse:
+            yield x_train, x_test
+        else:
+            yield x_train.toarray(), x_test.toarray()
+
+        i += 1
+
+
+def one_hot_encode(item, rating, input_dim, do_preprocess=False):
+    v = np.zeros((input_dim,), dtype=np.float32)
+    v[item] = rating
+    if do_preprocess:
+        preprocess_ = np.vectorize(preprocess)
+        v = preprocess_(v)
+    return v
+
+
+def sequence_encode(seq, input_dim):
+    v = np.zeros(input_dim, dtype=np.float32)
+    for (it, r) in seq:
+        v[it] = r
+    return v
 
 # ---- Testing data
 
@@ -108,30 +153,4 @@ def import_test():
 
 
 if __name__ == "__main__":
-    # training_set_stats()
-    # Files paths
-    data_file = data_dir + '/matrices.xz'
-    nmf_model_file = data_dir + '/model_params'
-    p_valid = 0.1
-
-    # --- Load data
-    if os.path.exists(data_file):
-        training_mat, validation_set = load(data_file)
-    else:
-        training_mat, validation_set = import_matrix()
-        dump((training_mat, validation_set), data_file)
-
-    # Run k-SVD
-    p, d, q = svds(training_mat, 40)
-
-    ''' Run and save params '''
-    if os.path.exists(nmf_model_file + '.xz'):
-        (W, H) = load(nmf_model_file + '.xz')
-    else:
-        (W, H), err, (_, _, _, _, iters) = run_nmf(training_mat)
-        dump((W, H), "{}_{}_{}.xz".format(nmf_model_file, int(err), 1 - p_valid))
-        print("Reconstruction error = {} in {} iterations".format(err, iters))
-
-    validation_score = mf_val_rmse(W, H, validation_set)
-    print("Validation RMSE={}".format(validation_score))
-    test(W, H)
+    t = import_sequence()

@@ -4,8 +4,8 @@ function TrainNetwork(train, test, info, config)
    local metaDim = 0
    if config.use_meta then 
       metaDim = info.metaDim or 0
-   else -- fix issue in line 67 of CFNTools
-      info.metaDim = info.dimension
+   --else -- fix issue in line 67 of CFNTools
+    --  info.metaDim = info.dimension
    end
 
    local bottleneck = {}

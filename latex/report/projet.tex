@@ -20,15 +20,15 @@
 \begin{abstract}
 
 The objective of this analysis is to predict a rating that would be assigned by customers to items (which could be e.g. a firm's services). 
-The problem was designed as a case of sequential prediction. Moreover, it can be viewed as a collaborating filtering. It is solved using the following methods: firstly, an Non-negative Matrix Factorization is applied. Then,  and autoencoders.
+The problem was designed as a case of sequential prediction. Moreover, it can be viewed as a collaborating filtering. It is solved using non-negative matrix factorization and autoencoders approaches.
 
 \end{abstract}
 
 \section{Introduction}
 
 In collaborative filtering, each item $i$ of a collection is rated by one or more members of a population $n_u$. The aim is to predict the rating that a person would give to an unseen item, so as to be able to recommend new items to users such that it fits their preferences with high probability.
-
-In this setup, let $R$ represent a $n \times m$ matrix. The rating of the $j^{th}$ item from the $i^{th}$ user is $r_{ij}$.
+Let $R \in N^{ n \times m}$ represent the rating matrix. 
+Then $r_{ij}$ is the rating given to the $j^{th}$ item by the $i^{th}$ user.
 
 \subsection{Data}
 We are given a training set describing the ratings assigned by customers to items in some given order.
@@ -55,8 +55,10 @@ The reconstruction error is computed over all non negative coefficients of the R
 
 The Alternating Least Squares with Regularization algorithm \cite{zhou2008large}  minimizes \eqref{1}, which is non-convex as both $U$ and $V$ are unknown. It does so by alternatively updating U while keeping V fixed and then updating V while keeping U fixed. The parameters used were $\lambda = 0.01$ and a latent dimension $d = 100$.
 
+\subsection{Temporal dynamics}
+In the context of matrix factorization, temporal dynamics can be achieved by adding bias terms in the objective function pertaining to either sides of the matrix factors. However, in the speicific problem there is no information with which to encode this bias.
 
-\section{Auto-encoder}
+\section{Variational Auto-encoder}
 
 The auto-encoder is a neural network approach used in unsupervised learning for dimensionality reduction. It optimizes the following loss function:
 
@@ -70,17 +72,21 @@ where $\mathcal{C}(\tilde{x})$ The first term is a loss over corrupted version o
 
 In the supervised classification task, the auto-encoder's objective is to lower a prediction error over a training set.
 
-The approach proposed by \cite{strub2016hybrid} was used to tackle our collaborating filter problem. Two different auto-encoders can be trained depending on whether the network seeks to make user or item vectors dense:
+The approach proposed by \cite{strub2016hybrid} tackles the collaborating filter problem. Two different auto-encoders can be trained depending on whether the network seeks learn a representation of users or items:
 \begin{itemize}
 \item U-CFN is defined as $\hat{\textbf{u}}_i = nn(\textbf{u}_i)$
 \item V-CFN is defined as $\hat{\textbf{v}}_j = nn(\textbf{v}_j)$ 
 \end{itemize}
 
-\section{Temporal dynamics}
-In the context of matrix factorization, an idea is to add temporal dynamics is to bias either sides of the matrix factors. In the context of the neural networks, the idea is to preserver sequence information so as to learn to predict the next watch. The authors of \cite{youtube2016} predict the next item in the sequence instead of predicting a randomly held-out item. Specifically, for the auto-encoder, one approach would be to create multiple examples for each user by incrementally augmenting each input vector with entries from the rated items sequence and evaluating the network on the reconstruction of the future entry.
+\section{Learning rating sequences}
+ In the context of the neural networks, the idea is to preserver sequence information so as to learn to predict the next watch. The authors of \cite{youtube2016} predict the next item in the sequence instead of predicting a randomly held-out item. Specifically, for the auto-encoder, one approach would be to create multiple examples for each user by incrementally augmenting each input vector with entries from the rated items sequence and evaluating the network on the reconstruction of the future entry.
+\subsection{Testing the importance of the sequence information}
+There are different ways to test whether the sequences are important to the task of prediction: firstly, by destroying part of the sequences (in which case, the raw loss of information has to be balanced against the loss of succession). Secondly, by shuffling the sequence (in which case the loss in performance has to be balanced against the properties of the model w.r.t exchangeability).
+\subsection{LSTM}
+
 
 \section{Implicit side information}
-Another source of information the model can take into account is the fact that the test set provides entries indicating which items have further been rated. This information can be integrated following \cite{salakhutdinov2007restricted}: the hidden units activations are conditioned on the visible units activations and a vector describing which items were seen but not rated.
+The test set provides an additional source of information, namely items which were seen but whose rating is unavailable for training. The model can use this information by conditioning the hidden units activations on both the visible units activations and a vector indicating which items were rated \cite{salakhutdinov2007restricted}.
 
 \section{Results}
 The metrics used to evaluate the performance of each training method for this type of problem is either the RMSE (root mean squared error) or the MAE (mean absolute error). The scores below represent the RMSE and were computed on a validation set selected uniformly at random amongst the training set:
