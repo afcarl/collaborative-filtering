@@ -1,8 +1,7 @@
 import pandas as pd
-from docutils.nodes import header
+import math
 
-
-def remove_ratings(file_path, nFirstRatings, nLastRatings, outputFile):
+def remove_ratings(file_path, nFirstRatingToRemovePercentage, nLastRatingToRemovePercentage, outputFile):
 
     tbl = pd.read_csv(file_path, names=['user', 'item', 'rating'])
 
@@ -18,6 +17,8 @@ def remove_ratings(file_path, nFirstRatings, nLastRatings, outputFile):
         iRating = 0
         nRatingOfUser = nRatingPerUser[tbl.iloc[iUser]['user']]
 
+        nFirstRatings = int(math.ceil(nRatingOfUser * nFirstRatingToRemovePercentage))
+        nLastRatings = int(math.ceil(nRatingOfUser * nLastRatingToRemovePercentage))
         if nFirstRatings + nLastRatings >= nRatingOfUser:
 
             iUser += nRatingOfUser
@@ -31,10 +32,10 @@ def remove_ratings(file_path, nFirstRatings, nLastRatings, outputFile):
 
 if __name__ == "__main__":
 
-    preShrunk =  20
-    postShrunk = 20
+    preShrunk = 0.2
+    postShrunk = 0
 
-    output = "input/customeraffinity500k_shrunk_%d_%d.csv" % (preShrunk, postShrunk)
+    output = "input/customeraffinity500k_shrunk_%f_%f.csv" % (preShrunk, postShrunk)
 
     remove_ratings("input/customeraffinity500k.train", preShrunk, postShrunk, output)
 
