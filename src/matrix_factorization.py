@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+from time import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,13 +29,40 @@ def run_nmf(matrix, init_='nndsvdar', alpha_=0.1, l1_ratio_=0.0, latent_dim=100)
     H = estimator.components_  # (n_components, n_features)
     return (W, H), estimator.reconstruction_err_, estimator.n_iter_
 
+def nmf_wrapper():
+    # training_set_stats()
+    # Files paths
+    data_file = data_dir + '/matrices.bz2'
+    nmf_model_file = data_dir + '/model_params'
+    p_valid = 0.1
+
+    # --- Load data
+    if os.path.exists(data_file):
+        training_mat, validation_set = load(data_file)
+    else:
+        training_mat, validation_set = import_matrix()
+        dump((training_mat, validation_set), data_file)
+
+    ''' Run and save params '''
+    if os.path.exists(nmf_model_file + '.bz2'):
+        print('Loading components from file.')
+        (W, H) = load(nmf_model_file + '.bz2')
+    else:
+        print('Running NMF.')
+        (W, H), err, (_, _, _, _, iters) = run_nmf(training_mat)
+        dump((W, H), "{}_{}_{}.xz".format(nmf_model_file, int(err), 1 - p_valid))
+        print("Reconstruction error = {} in {} iterations".format(err, iters))
+
+    validation_score = mf_val_rmse(W, H, validation_set)
+    print("Validation RMSE={}".format(validation_score))
+    test(W, H, scoreSet)
 
 def run_grid(data):
     params_dict = {
-        #'alpha': uniform.rvs(size=3),
-        #'l1_ratio': uniform.rvs(size=3),
+        # 'alpha': uniform.rvs(size=3),
+        # 'l1_ratio': uniform.rvs(size=3),
         'inits': ['random', 'nndsvd'],
-        'dims' : [20, 30, 40],
+        'dims': [20, 30, 40],
         'alphas': [0.001, 0.01, 0.1, 0.2, 0.5, 1.0],
         'l1_ratio': [0.0, 0.5, 1.0]
     }
@@ -65,35 +93,22 @@ def test(w, h, scoreSet):
 
         return test_ratings
 
-def test_svd(matrix, dimension=40):
+
+def test_svd(max_iters, k=1000):
     # Run k-SVD
-    p, d, q = svds(training_mat, 40)
+    training_matrix, test_matrix = import_matrix()
+    rows, cols = test_matrix.nonzero()
+    test_lst = []
+    for i in xrange(rows.shape[0]):
+        test_lst.append((rows[i], cols[i], test_matrix[rows[i], cols[i]]))
+
+    t0 = time()
+    p, d, q = svds(training_matrix, k, maxiter=max_iters)
+    print('[SVD-{}] Computed {} iters in {} s'.format(k, max_iters, time()-t0))
+    loss = mf_val_rmse(p.dot(d), q, test_lst)
+    print(loss)
+
 
 if __name__ == "__main__":
-    # training_set_stats()
-    # Files paths
-    data_file = data_dir + '/matrices.bz2'
-    nmf_model_file = data_dir + '/model_params'
-    p_valid = 0.1
+    test_svd(100)
 
-    # --- Load data
-    if os.path.exists(data_file):
-        training_mat, validation_set = load(data_file)
-    else:
-        training_mat, validation_set = import_matrix()
-        dump((training_mat, validation_set), data_file)
-
-
-    ''' Run and save params '''
-    if os.path.exists(nmf_model_file + '.bz2'):
-        print('Loading components from file.')
-        (W, H) = load(nmf_model_file + '.bz2')
-    else:
-        print('Running NMF.')
-        (W, H), err, (_, _, _, _, iters) = run_nmf(training_mat)
-        dump((W, H), "{}_{}_{}.xz".format(nmf_model_file, int(err), 1 - p_valid))
-        print("Reconstruction error = {} in {} iterations".format(err, iters))
-
-    validation_score = mf_val_rmse(W, H, validation_set)
-    print("Validation RMSE={}".format(validation_score))
-    test(W, H, scoreSet)
