@@ -1,4 +1,6 @@
 import pandas as pd
+from docutils.nodes import header
+
 
 def remove_ratings(file_path, nFirstRatings, nLastRatings, outputFile):
 
@@ -25,7 +27,7 @@ def remove_ratings(file_path, nFirstRatings, nLastRatings, outputFile):
         iUser += nRatingOfUser
 
 
-    pd.DataFrame(ratings).to_csv(outputFile, index=False)
+    pd.DataFrame(ratings).to_csv(outputFile, index=False, header=False)
 
 if __name__ == "__main__":
 
