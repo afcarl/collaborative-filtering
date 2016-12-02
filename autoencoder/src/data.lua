@@ -12,7 +12,7 @@ dofile("data/DoubanLoader.lua")
 dofile("data/DummyLoader.lua")
 dofile("data/TemplateLoader.lua")
 dofile("data/ClassicLoader.lua")
-
+dofile("data/AlixLoader.lua")
 dofile ("tools/LuaTools.lua")
 
 ----------------------------------------------------------------------
