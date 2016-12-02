@@ -30,7 +30,7 @@ class VariationalAutoencoder(object):
         self.cost = tf.reduce_mean(reconstr_loss + latent_loss)
         self.optimizer = optimizer.minimize(self.cost)
 
-        init = tf.initialize_all_variables()
+        init = tf.global_variables_initializer()
         self.sess = tf.Session()
         self.sess.run(init)
 
@@ -56,7 +56,8 @@ class VariationalAutoencoder(object):
 
     def generate(self, hidden = None):
         if hidden is None:
-            hidden = np.random.normal(size=self.weights["b1"])
+            print(self.weights['b1'])
+            hidden = np.random.normal(size=self.n_hidden) #
         return self.sess.run(self.reconstruction, feed_dict={self.z_mean: hidden})
 
     def reconstruct(self, X):
