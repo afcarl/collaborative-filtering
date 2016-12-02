@@ -3,7 +3,7 @@
 \usepackage{url}
 \usepackage{graphicx}
 \usepackage{cite}
-\usepackage{geometry}
+\usepackage[top=2cm,left=2cm,right=2cm]{geometry}
 \usepackage{amsmath}
 
 
@@ -19,37 +19,36 @@
 
 \begin{abstract}
 
-The objective of this analysis is to predict a rating that would be assigned by customers to items (which could be e.g. a firm's services). 
-The problem was designed as a case of sequential prediction. Moreover, it can be viewed as a collaborating filtering. It is solved using non-negative matrix factorization and autoencoders approaches.
+A collaborative filtering problem for recommandation was addressed Non Negative Matrix Factorization (NMF) techniques and with Autoencoders. The impact of rating temporal dynamic was studied by removing a proportion of the firsts and the last ratings of each customers. Similar model performances on the truncated dataset and the full one indicates that temporal information may not have a great impact.
 
 \end{abstract}
 
 \section{Introduction}
 
-In collaborative filtering, each item $i$ of a collection is rated by one or more members of a population $n_u$. The aim is to predict the rating that a person would give to an unseen item, so as to be able to recommend new items to users such that it fits their preferences with high probability.
+In collaborative filtering, items are rated by one or more members of a population. The aim is infer the missing ratings in order to recommend to the users, the items they would have given a high rating. 
+
 Let $R \in N^{ n \times m}$ represent the rating matrix. 
-Then $r_{ij}$ is the rating given to the $j^{th}$ item by the $i^{th}$ user.
+Then $r_{ij}$ is the rating given by the $i^{th}$ user to the $j^{th}$ item.
 
-\subsection{Data}
-We are given a training set describing the ratings assigned by customers to items in some given order.
-Dataset size: 2536705 examples in the training set, 1306637 in the test set. Total number of users 93705 (of which only 92088 are in the training set) and 3561 items. The dataset is very sparse,  less than $1\% $ of the ratings matrix is filled.
-Ratings distribution: [114214, 251596, 728518, 860463, 581913] In proportion of the total number of ratings: [0.0450, 0.0991, 0.2872, 0.3392, 0.2293].
 
-\section{Hidden Markov Model}
-It is possible to model the problem of sequential prediction using a hidden Markov model. In order to do that efficiently, it is assumed that 
+The dataset used contains 2536705 ratings of 3561 items given by 93705 users. Less than  $1\% $ of the rating matrix is filled.
+
+%Ratings distribution: [114214, 251596, 728518, 860463, 581913] In proportion of the total %number of ratings: [0.0450, 0.0991, 0.2872, 0.3392, 0.2293].
+
+
 \section{Non negative matrix factorization}
 
 In non negative factorizations we seek SPD matrices U and V such that the rating product matrix can be factorized as $R = UV^T$. It is possible to find such matrices that minimize the reconstruction error defined below by using an iterative optimization method (e.g gradient descent): 
 
-\begin{equation}
+\begin{equation*}
 \begin{split}
-\argmin_{U,V} & \frac{1}{2} ||R - UV||^2 \\
-			  + & \alpha \lambda_1 (||U||_1 + ||V||_1) \\
+ U^*, V^* = \argmin_{U,V} & \frac{1}{2} ||R - UV||^2 \\
+			 + & \alpha \lambda_1 (||U||_1 + ||V||_1) \\
 			  + & \frac{1}{2} \alpha \lambda_2  (||U||^2 + ||V||^2) 
 \end{split}
-\end{equation}  
+\end{equation*}  
 
-The reconstruction error is computed over all non negative coefficients of the R matrix. In other words, the algorithm only tries to recover the available ratings. 
+The reconstruction error is computed over all non negative coefficients of the R matrix. 
 
 \subsection{ALS-WR}
 
@@ -79,27 +78,35 @@ The approach proposed by \cite{strub2016hybrid} tackles the collaborating filter
 \end{itemize}
 
 \section{Learning rating sequences}
- In the context of the neural networks, the idea is to preserver sequence information so as to learn to predict the next watch. The authors of \cite{youtube2016} predict the next item in the sequence instead of predicting a randomly held-out item. Specifically, for the auto-encoder, one approach would be to create multiple examples for each user by incrementally augmenting each input vector with entries from the rated items sequence and evaluating the network on the reconstruction of the future entry.
-\subsection{Testing the importance of the sequence information}
-There are different ways to test whether the sequences are important to the task of prediction: firstly, by destroying part of the sequences (in which case, the raw loss of information has to be balanced against the loss of succession). Secondly, by shuffling the sequence (in which case the loss in performance has to be balanced against the properties of the model w.r.t exchangeability).
-\subsection{LSTM}
 
+ In the context of the neural networks, the idea is to preserver sequence information so as to learn to predict the next watch. The authors of \cite{youtube2016} predict the next item in the sequence instead of predicting a randomly held-out item. Specifically, for the auto-encoder, one approach would be to create multiple examples for each user by incrementally augmenting each input vector with entries from the rated items sequence and evaluating the network on the reconstruction of the future entry.
+ 
+ 
+\subsection{Testing the importance of the sequence information}
+
+There are different ways to test whether the sequences are important to the task of prediction: firstly, by destroying part of the sequences (in which case, the raw loss of information has to be balanced against the loss of succession). Secondly, by shuffling the sequence (in which case the loss in performance has to be balanced against the properties of the model w.r.t exchangeability).
 
 \section{Implicit side information}
+
 The test set provides an additional source of information, namely items which were seen but whose rating is unavailable for training. The model can use this information by conditioning the hidden units activations on both the visible units activations and a vector indicating which items were rated \cite{salakhutdinov2007restricted}.
 
 \section{Results}
+
 The metrics used to evaluate the performance of each training method for this type of problem is either the RMSE (root mean squared error) or the MAE (mean absolute error). The scores below represent the RMSE and were computed on a validation set selected uniformly at random amongst the training set:
-\begin{tabular}{|l|c|c|r|}
+
+\vspace{0.5cm}
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
   \hline
   NMF & ALS-WR & User AE & Item AE \\
   \hline
   3.70 & 0.934 & 0.913 & 0.938 \\
   \hline
 \end{tabular}
-
+\end{center}
 
 \section{Conclusion}
+
 Different methods were compared in order to solve the problem of customer affinity prediction. When sparsity becomes an issue, no single method works best: exploiting the problem structure and combining multiple approaches has the potential of achieving the best results.
 
 \bibliographystyle{plain}
