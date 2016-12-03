@@ -37,6 +37,7 @@ def import_matrix(pr_valid=0.1, do_preprocess=False, return_sparse=True):
 
     return train_mat, valid_mat
 
+
 def to_matrix(tbl, shape=R_SHAPE):
     user_arr = tbl.iloc[:, 0].values
     item_arr = tbl.iloc[:, 1].values
@@ -45,6 +46,7 @@ def to_matrix(tbl, shape=R_SHAPE):
     matrix = csc_matrix((data, (user_arr, item_arr)), dtype=np.float32)
 
     return matrix
+
 
 def import_tensor(pr_valid=0.1, do_preprocess=False):
     tbl = pd.read_table(trainSet, sep=',', header=None)
@@ -59,6 +61,7 @@ def import_tensor(pr_valid=0.1, do_preprocess=False):
 
     return train_mat, valid_mat
 
+
 def to_sparse_tensor(tbl):
     tensor = tf.SparseTensor(list(zip(
         tbl.iloc[:, 0].values, tbl.iloc[:, 1].values)),
@@ -67,10 +70,10 @@ def to_sparse_tensor(tbl):
 
     return tensor
 
+
 # ---- Data as sequences of ratings
 
 def import_sequence(max_items=None, do_preprocess=False):
-
     t0 = time()
     # Read training data
     tbl = pd.read_table(trainSet, sep=',', header=None)
@@ -82,14 +85,14 @@ def import_sequence(max_items=None, do_preprocess=False):
     sp_ids_len = n_train
     curr_client = 0
     user_hist = []
-    row_indices = [] #np.empty(sp_ids_len, dtype=np.int32)
-    col_indices = [] #np.empty(sp_ids_len, dtype=np.int32)
-    data = [] #np.empty(sp_ids_len, dtype=np.int32)
+    row_indices = []  # np.empty(sp_ids_len, dtype=np.int32)
+    col_indices = []  # np.empty(sp_ids_len, dtype=np.int32)
+    data = []  # np.empty(sp_ids_len, dtype=np.int32)
     seq_len = 0
     user_bias = 0
 
     prev_ptr = 0
-    n_ratings = 0 # 2000
+    n_ratings = 0  # 2000
 
     for i in range(n_train):
         user, item, rating = tbl.iloc[i]
@@ -97,7 +100,7 @@ def import_sequence(max_items=None, do_preprocess=False):
         if not seq_len or user == curr_client:
             user_hist.append((item, rating))
             seq_len += 1
-            user_bias = ((seq_len-1) * user_bias + rating) / float(seq_len)
+            user_bias = ((seq_len - 1) * user_bias + rating) / float(seq_len)
         else:  # new client
             # Save data
             items, ratings = zip(*user_hist)
@@ -130,14 +133,15 @@ def import_sequence(max_items=None, do_preprocess=False):
             print("Processed {} lines".format(i))
 
     # Return sparse column matrix
-    matrix = csc_matrix((data[:prev_ptr], (row_indices[:prev_ptr], col_indices[:prev_ptr])))
+    matrix = csc_matrix((data[:prev_ptr], (row_indices[:prev_ptr], col_indices[:prev_ptr])), dtype=np.float32)
     print("[Loaded] {} sequences - took {} s".format(matrix.shape, time() - t0))
 
     return matrix
 
 
-def cached_sequence_data(max_items=None, do_preprocess=False, filename='seq_data.bz2'):
-    data_file = os.path.join(data_dir, filename)
+def cached_sequence_data(max_items=None, do_preprocess=False, filename='seq_data', ext='bz2'):
+    fp = '{}_{}.{}'.format(filename,'pproc' if do_preprocess else 'raw', ext)
+    data_file = os.path.join(data_dir, fp)
     if os.path.exists(data_file):
         t0 = time()
         sequences = load(data_file)
@@ -193,6 +197,7 @@ def sequence_encode(seq, input_dim):
         v[it] = r
     return v
 
+
 # ---- Testing data
 
 def import_test():
@@ -206,5 +211,5 @@ def import_test():
 
 
 if __name__ == "__main__":
-    t = get_score_set()
-    t.values.shape
+    t = cached_sequence_data(do_preprocess=True)
+    print(t.dtype)

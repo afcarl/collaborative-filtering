@@ -3,7 +3,7 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 
 from VariationalAutoencoder import VariationalAutoencoder
-from data import cached_sequence_data, import_matrix, import_tensor, one_hot_encode, get_random_block_from_data
+from data import cached_sequence_data, import_matrix, import_tensor, one_hot_encode, get_random_block_from_data, postprocess
 import sklearn.preprocessing as prep
 
 from DenoisingAutoencoder import MaskingNoiseAutoencoder
@@ -24,19 +24,26 @@ def standard_scale(X_train, X_test):
 
 
 def main(_):
-    sequences = cached_sequence_data(do_preprocess=True)
+    sequences = cached_sequence_data(max_items=None, do_preprocess=True)
     X_train, X_test = train_test_split(sequences, test_size=0.1)
+
+    # The model used 32-bit precision floats
+    if X_train.dtype == np.float64: X_train = X_train.astype(np.float32)
+    if X_test.dtype == np.float64: X_train = X_test.astype(np.float32)
+
     # X_train, X_test = import_matrix(do_preprocess=True)
     # X_train, X_test = min_max_scale(X_train, X_test)
     # X_train, X_test = standard_scale(X_train, X_test)
+
     with tf.Session() as sess:
         # tf.logging.set_verbosity(tf.logging.INFO)
         # summary_writer = tf.train.SummaryWriter(FLAGS.train_dir, sess.graph)
 
         n_samples, n_visible = X_train.shape #tf.shape(X_train).eval()
-        training_epochs = 20
+        training_epochs = 50
         batch_size = 50
         display_step = 1
+        print('Training on {} samples'.format(n_samples))
 
         # autoencoder = VariationalAutoencoder(n_input=n_visible,
         #                                      n_hidden=700,
@@ -56,10 +63,11 @@ def main(_):
             for i in range(total_batch):
                 # Load batch
                 batch_xs = get_random_block_from_data(X_train, batch_size).toarray()
+                missing = batch_xs == 0
                 # Unbias the data
-                batch_xs -= batch_xs.mean(axis=1)[:, np.newaxis].astype(np.float32)
+                batch_xs -= batch_xs.mean(axis=1)[:, np.newaxis]
                 # Fit training using batch data
-                cost = autoencoder.partial_fit(batch_xs)
+                cost = autoencoder.partial_fit(batch_xs, missing)
                 # Compute average loss
                 avg_cost += cost / n_samples * batch_size
 
@@ -71,9 +79,10 @@ def main(_):
         avg_cost = 0.
         for i in range(total_batch):
             batch_xs = X_test[i * batch_size:min((i + 1) * batch_size, n_samples), :].toarray()
-            batch_xs -= batch_xs.mean(axis=1)[:, np.newaxis].astype(np.float32)
+            missing = batch_xs == 0
+            batch_xs -= batch_xs.mean(axis=1)[:, np.newaxis]
             # Fit training using batch data
-            cost = autoencoder.calc_total_cost(batch_xs)
+            cost = autoencoder.calc_total_cost(batch_xs, missing)
             # Compute average loss
             avg_cost += cost / n_samples * batch_size
 
@@ -82,14 +91,15 @@ def main(_):
 
         # Sampling some test values
         t_rows, t_cols = X_test.nonzero()
-        rating = X_test[t_rows[0], t_cols[0]]
-        test = X_test[t_rows[0]].toarray()
-        t = autoencoder.transform(test)
-        try:
-            output = autoencoder.generate(t)
-            print(output[0, t_cols[0]], rating)
-        except Exception as exc:
-            print(exc)
+        for i in range(10):
+            rating = X_test[t_rows[i], t_cols[i]]
+            test = X_test[t_rows[i]].toarray()
+            t = autoencoder.transform(test)
+            try:
+                output = autoencoder.generate(t)
+                print(postprocess(output[0, t_cols[i]]), postprocess(rating))
+            except Exception as exc:
+                print(exc)
 
 
 if __name__ == '__main__':

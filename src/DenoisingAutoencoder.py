@@ -92,10 +92,13 @@ class MaskingNoiseAutoencoder(object):
         # Weight regularization
         l2_reg = tf.contrib.layers.l2_regularizer(weight_decay)
         for w in self.weights.values(): l2_reg(w)
-        # model
-        self.x = tf.placeholder(tf.float32, [None, self.n_input])
-        zero_like = tf.zeros(tf.shape(self.x), dtype=np.float32)
-
+        # Define model
+        self.x_orig = tf.placeholder(tf.float32, [None, self.n_input], name='X')
+        self.missing_values = tf.placeholder(tf.bool, [None, self.n_input], name='missing')
+        zero_like = tf.zeros_like(self.x_orig)
+        # Hide original missing values
+        self.x = tf.select(self.missing_values, zero_like, self.x_orig)
+        # Apply drop-out (confusion set) and save the dropout mask
         self.dropped_out = tf.nn.dropout(self.x, self.keep_prob)
         self.dropout_mask = tf.equal(self.x, self.dropped_out)
         self.hidden = self.transfer(tf.add(tf.matmul(self.dropped_out + scale * tf.random_normal((n_input,)),
@@ -108,6 +111,7 @@ class MaskingNoiseAutoencoder(object):
         reconstruction errors are reweighed by β
         '''
         error = tf.sub(self.reconstruction, self.x)
+        error = tf.select(self.missing_values, zero_like, error)
         loss = tf.select(self.dropout_mask, alpha * error, beta * error)
         reweighted_loss = tf.select(tf.equal(self.x, zero_like), zero_like, loss)
         self.cost = 0.5 * tf.reduce_sum(tf.pow(reweighted_loss, 2.0))
@@ -125,13 +129,19 @@ class MaskingNoiseAutoencoder(object):
         all_weights['b2'] = tf.Variable(tf.zeros([self.n_input], dtype=tf.float32))
         return all_weights
 
-    def partial_fit(self, X):
+    def partial_fit(self, X, missing_vals):
+        assert X.dtype == np.float32
+        assert missing_vals.dtype == np.bool
         cost, opt = self.sess.run((self.cost, self.optimizer),
-                                  feed_dict={self.x: X, self.keep_prob: self.dropout_probability})
+                                  feed_dict={self.x_orig: X,
+                                             self.keep_prob: self.dropout_probability,
+                                             self.missing_values: missing_vals})
         return cost
 
-    def calc_total_cost(self, X):
-        return self.sess.run(self.cost, feed_dict={self.x: X, self.keep_prob: 1.0})
+    def calc_total_cost(self, X, missing_vals):
+        return self.sess.run(self.cost, feed_dict={self.x_orig: X,
+                                                   self.missing_values : missing_vals,
+                                                   self.keep_prob: 1.0})
 
     def transform(self, X):
         return self.sess.run(self.hidden, feed_dict={self.x: X, self.keep_prob: 1.0})
