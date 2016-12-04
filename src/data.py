@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+from collections import defaultdict
 from time import time
 
 import tensorflow as tf
@@ -73,25 +74,36 @@ def to_sparse_tensor(tbl):
 
 # ---- Data as sequences of ratings
 
-def import_sequence(max_items=None, do_preprocess=False):
+def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
     t0 = time()
     # Read training data
     tbl = pd.read_table(trainSet, sep=',', header=None)
+    # Split the table in train-test
+    test_tbl = None
+    if test_ratio:
+        length = len(tbl)
+        all_indices = list(range(length))
+        test_indices = np.random.choice(all_indices, int(test_ratio * length), replace=False)
+        train_indices = list(set(all_indices).difference(test_indices))
+        test_tbl = tbl.iloc[test_indices, :]
+        tbl = tbl.iloc[train_indices, :]
+        print("[Split] {} train, {} test ".format(len(train_indices), len(test_indices)))
+
     # Preprocess if needed
     if do_preprocess: tbl.iloc[:, -1].apply(preprocess)
 
     n_train = int(max_items) if max_items else len(tbl)
     # matrix = lil_matrix((n_train, 3), dtype=np.float32)
-    sp_ids_len = n_train
+    tot_n_elts = n_train
     curr_client = 0
     user_hist = []
     row_indices = []  # np.empty(sp_ids_len, dtype=np.int32)
     col_indices = []  # np.empty(sp_ids_len, dtype=np.int32)
     data = []  # np.empty(sp_ids_len, dtype=np.int32)
     seq_len = 0
-    user_bias = 0
+    user_bias = 0.0
 
-    prev_ptr = 0
+    previous_index = 0
     n_ratings = 0  # 2000
 
     for i in range(n_train):
@@ -104,18 +116,18 @@ def import_sequence(max_items=None, do_preprocess=False):
         else:  # new client
             # Save data
             items, ratings = zip(*user_hist)
-            new_n_ratings = prev_ptr + seq_len
-            if new_n_ratings > sp_ids_len:
-                row_indices = np.hstack((row_indices, np.empty(sp_ids_len, dtype=np.float32)))
-                col_indices = np.hstack((row_indices, np.empty(sp_ids_len, dtype=np.float32)))
-                data = np.hstack((row_indices, np.empty(sp_ids_len, dtype=np.float32)))
-                sp_ids_len *= 2
+            new_n_ratings = previous_index + seq_len
+            if new_n_ratings > tot_n_elts: # Extend datastruct (2 * current length)
+                row_indices = np.hstack((row_indices, np.empty(tot_n_elts, dtype=np.float32)))
+                col_indices = np.hstack((row_indices, np.empty(tot_n_elts, dtype=np.float32)))
+                data = np.hstack((row_indices, np.empty(tot_n_elts, dtype=np.float32)))
+                tot_n_elts *= 2
 
-            row_indices[prev_ptr:new_n_ratings] = np.full(seq_len, i, dtype=np.float32)
-            col_indices[prev_ptr:new_n_ratings] = np.array(items)
-            data[prev_ptr:new_n_ratings] = np.array(ratings) - user_bias
+            row_indices[previous_index:new_n_ratings] = np.full(seq_len, i, dtype=np.float32)
+            col_indices[previous_index:new_n_ratings] = np.array(items)
+            data[previous_index:new_n_ratings] = np.array(ratings) - user_bias
 
-            prev_ptr = new_n_ratings
+            previous_index = new_n_ratings
             """
             data.extend(map(lambda r: r - user_bias, ratings))
             col_indices.extend(items)
@@ -133,25 +145,25 @@ def import_sequence(max_items=None, do_preprocess=False):
             print("Processed {} lines".format(i))
 
     # Return sparse column matrix
-    matrix = csc_matrix((data[:prev_ptr], (row_indices[:prev_ptr], col_indices[:prev_ptr])), dtype=np.float32)
+    matrix = csc_matrix((data[:previous_index], (row_indices[:previous_index], col_indices[:previous_index])), dtype=np.float32)
     print("[Loaded] {} sequences - took {} s".format(matrix.shape, time() - t0))
 
-    return matrix
+    return matrix, test_tbl
 
 
 def cached_sequence_data(max_items=None, do_preprocess=False, filename='seq_data', ext='bz2'):
-    fp = '{}_{}.{}'.format(filename,'pproc' if do_preprocess else 'raw', ext)
+    fp = '{}_{}.{}'.format(filename, 'pproc' if do_preprocess else 'raw', ext)
     data_file = os.path.join(data_dir, fp)
     if os.path.exists(data_file):
         t0 = time()
-        sequences = load(data_file)
+        sequences, test_tbl = load(data_file)
         print("[Loaded] {} from cache - took {}".format(data_file, time() - t0))
         if max_items and sequences.shape[0] > max_items:
             sequences = sequences[:max_items]
     else:
-        sequences = import_sequence(max_items, do_preprocess)
-        dump(sequences, data_file)
-    return sequences
+        sequences, test_tbl = import_sequence(max_items, do_preprocess)
+        dump((sequences, test_tbl), data_file)
+    return sequences, test_tbl
 
 
 def future_generator(X, batch_size, sparse=True, back_to_the_future=False):
@@ -192,10 +204,15 @@ def one_hot_encode(item, rating, input_dim, do_preprocess=False):
 
 
 def sequence_encode(seq, input_dim):
-    v = np.zeros(input_dim, dtype=np.float32)
-    for (it, r) in seq:
-        v[it] = r
-    return v
+    user_items = defaultdict(list)
+    for i in range(len(seq)):
+        user, item, rating = seq.iloc[i, :]
+        user_items[user].append((item, rating))
+    embeddings = np.zeros((len(user_items), input_dim), dtype=np.float32)
+    for i, lst in enumerate(user_items.values()):
+        for j, rating in lst:
+            embeddings[i, j] = rating
+    return embeddings
 
 
 # ---- Testing data
@@ -211,5 +228,5 @@ def import_test():
 
 
 if __name__ == "__main__":
-    t = cached_sequence_data(do_preprocess=True)
-    print(t.dtype)
+    train, test = cached_sequence_data(max_items=int(1e5), do_preprocess=True)
+    print(test.groupby(1))

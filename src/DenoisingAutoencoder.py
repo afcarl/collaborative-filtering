@@ -72,14 +72,14 @@ class AdditiveGaussianNoiseAutoencoder(object):
         return self.sess.run(self.weights['b1'])
 
 
-class MaskingNoiseAutoencoder(object):
+class DenoisingAutoencoder(object):
     def __init__(self, session, n_input, n_hidden,
                  alpha=1.0, beta=0.7,
                  transfer_function=tf.nn.softplus,
                  optimizer=tf.train.AdamOptimizer(),
                  dropout_probability=0.25,
                  weight_decay=0.02,
-                 scale=0.2):
+                 noise_std=0.1):
         self.n_input = n_input
         self.n_hidden = n_hidden
         self.transfer = transfer_function
@@ -101,7 +101,7 @@ class MaskingNoiseAutoencoder(object):
         # Apply drop-out (confusion set) and save the dropout mask
         self.dropped_out = tf.nn.dropout(self.x, self.keep_prob)
         self.dropout_mask = tf.equal(self.x, self.dropped_out)
-        self.hidden = self.transfer(tf.add(tf.matmul(self.dropped_out + scale * tf.random_normal((n_input,)),
+        self.hidden = self.transfer(tf.add(tf.matmul(self.dropped_out + noise_std * tf.random_normal((n_input,)),
                                                      self.weights['w1']), self.weights['b1']))
         self.reconstruction = tf.add(tf.matmul(self.hidden, self.weights['w2']), self.weights['b2'])
 
