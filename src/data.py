@@ -7,7 +7,7 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 from joblib import dump, load
-from scipy.sparse import csc_matrix, lil_matrix
+from scipy.sparse import csc_matrix, lil_matrix, csr_matrix
 from sklearn.model_selection import train_test_split
 
 data_dir = os.path.join(os.path.split(os.path.realpath(__file__))[0], "..", "input")
@@ -15,8 +15,30 @@ data_dir = os.path.join(os.path.split(os.path.realpath(__file__))[0], "..", "inp
 trainSet = os.path.join(data_dir, "customeraffinity.train")
 scoreSet = os.path.join(data_dir, "customeraffinity.score")
 
-preprocess = lambda x: (float(x) - 3) / 2
-postprocess = lambda x: 2 * x + 3
+
+def preprocess(x):
+    pre = lambda x: (float(x) - 3) / 2
+    return generic_apply(pre, x)
+
+
+def postprocess(x):
+    post = lambda x: 2 * x + 3
+    return generic_apply(post, x)
+
+
+def generic_apply(func, data):
+    if isinstance(data, (int, float, np.int32, np.int64, np.float32, np.float64)):
+        return func(data)
+    elif isinstance(data, list):
+        return [func(v) for v in data]
+    elif isinstance(data, np.ndarray):
+        vfunc = np.vectorize(func)
+        return vfunc(data)
+    elif isinstance(data, pd.Series):
+        return data.apply(func)
+    else:
+        raise TypeError('unsupported {}'.format(type(data)))
+
 
 R_SHAPE = (93705, 3561)
 
@@ -78,6 +100,9 @@ def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
     t0 = time()
     # Read training data
     tbl = pd.read_table(trainSet, sep=',', header=None)
+    # Preprocess if needed
+    if do_preprocess: tbl.iloc[:, -1].apply(preprocess)
+
     # Split the table in train-test
     test_tbl = None
     if test_ratio:
@@ -88,9 +113,6 @@ def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
         test_tbl = tbl.iloc[test_indices, :]
         tbl = tbl.iloc[train_indices, :]
         print("[Split] {} train, {} test ".format(len(train_indices), len(test_indices)))
-
-    # Preprocess if needed
-    if do_preprocess: tbl.iloc[:, -1].apply(preprocess)
 
     n_train = int(max_items) if max_items else len(tbl)
     # matrix = lil_matrix((n_train, 3), dtype=np.float32)
@@ -117,7 +139,7 @@ def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
             # Save data
             items, ratings = zip(*user_hist)
             new_n_ratings = previous_index + seq_len
-            if new_n_ratings > tot_n_elts: # Extend datastruct (2 * current length)
+            if new_n_ratings > tot_n_elts:  # Extend datastruct (2 * current length)
                 row_indices = np.hstack((row_indices, np.empty(tot_n_elts, dtype=np.float32)))
                 col_indices = np.hstack((row_indices, np.empty(tot_n_elts, dtype=np.float32)))
                 data = np.hstack((row_indices, np.empty(tot_n_elts, dtype=np.float32)))
@@ -131,7 +153,7 @@ def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
             """
             data.extend(map(lambda r: r - user_bias, ratings))
             col_indices.extend(items)
-            row_indices.extend((i,) * len(items))
+            row_indices.extend([i] * len(items))
             """
             # Reset counters
             user_hist = []
@@ -145,13 +167,14 @@ def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
             print("Processed {} lines".format(i))
 
     # Return sparse column matrix
-    matrix = csc_matrix((data[:previous_index], (row_indices[:previous_index], col_indices[:previous_index])), dtype=np.float32)
+    matrix = csr_matrix((data[:previous_index], (row_indices[:previous_index], col_indices[:previous_index])),
+                        dtype=np.float32)
     print("[Loaded] {} sequences - took {} s".format(matrix.shape, time() - t0))
 
     return matrix, test_tbl
 
 
-def cached_sequence_data(max_items=None, do_preprocess=False, filename='seq_data', ext='bz2'):
+def cached_sequence_data(max_items=None, test_ratio=0.1, do_preprocess=False, filename='seq_data', ext='bz2'):
     fp = '{}_{}.{}'.format(filename, 'pproc' if do_preprocess else 'raw', ext)
     data_file = os.path.join(data_dir, fp)
     if os.path.exists(data_file):
@@ -161,7 +184,7 @@ def cached_sequence_data(max_items=None, do_preprocess=False, filename='seq_data
         if max_items and sequences.shape[0] > max_items:
             sequences = sequences[:max_items]
     else:
-        sequences, test_tbl = import_sequence(max_items, do_preprocess)
+        sequences, test_tbl = import_sequence(max_items, do_preprocess, test_ratio)
         dump((sequences, test_tbl), data_file)
     return sequences, test_tbl
 
@@ -193,40 +216,52 @@ def get_random_block_from_data(data, batch_size):
     return data[start_index:(start_index + batch_size), :]
 
 
-def one_hot_encode(item, rating, input_dim, do_preprocess=False):
+def one_hot_encode(item, rating, input_dim):
     # Equivalent in tensorflow is tf.one_hot
     v = np.zeros(input_dim, dtype=np.float32)
     v[item] = rating
-    if do_preprocess:
-        preprocess_ = np.vectorize(preprocess)
-        v = preprocess_(v)
     return v
 
 
-def sequence_encode(seq, input_dim):
-    user_items = defaultdict(list)
-    for i in range(len(seq)):
-        user, item, rating = seq.iloc[i, :]
-        user_items[user].append((item, rating))
-    embeddings = np.zeros((len(user_items), input_dim), dtype=np.float32)
-    for i, lst in enumerate(user_items.values()):
-        for j, rating in lst:
-            embeddings[i, j] = rating
-    return embeddings
+def sequence_encode(seq):
+    usr_grp = seq.groupby(seq.iloc[:, 0], sort=False)
+    rows, cols, data = [], [], []
+    for i, (user, item_lst) in enumerate(usr_grp):
+        n = len(item_lst)
+        cols.extend(item_lst.iloc[:, 1].values)
+        data.extend(item_lst.iloc[:, 2].values)
+        rows.extend([i] * n)
+
+    matrix = csr_matrix((np.array(data), (np.array(rows), np.array(cols))),
+                        shape=(len(usr_grp), R_SHAPE[1]),
+                        dtype=np.float32)
+    return matrix
 
 
-# ---- Testing data
+def import_validation_sparse(filename='seq_valid_data', ext='bz2', max_items=None):
+    """ Test data """
+    tbl = pd.read_table(scoreSet, sep=',', nrows=max_items)
 
-def import_test():
-    tbl = pd.read_table(scoreSet)
-    user_arr = tbl.iloc[:, 1].values
-    item_arr = tbl.iloc[:, 2].values
-    data = np.empty(len(item_arr))
-    data.fill(preprocess(0))
-    test_matrix = csc_matrix((data, (user_arr, item_arr)))
-    return test_matrix
+    fp = filename+'.'+ext
+    data_file = os.path.join(data_dir, fp)
+
+    try:
+        matrix = load(data_file)
+    except Exception:
+        user_grp = tbl.groupby('new_user', sort=False)
+        rows, cols, data = [], [], []
+        for i, (user, item_lst) in enumerate(user_grp):
+            n = len(item_lst)
+            data.extend([preprocess(0)] * n)
+            cols.extend(item_lst.new_item.values)
+            rows.extend([i] * n)
+
+        matrix = csr_matrix((np.array(data), (np.array(rows), np.array(cols))),
+                            shape=(len(user_grp), R_SHAPE[1]),
+                            dtype=np.float32)
+        dump(matrix, data_file)
+    return tbl, matrix
 
 
 if __name__ == "__main__":
-    train, test = cached_sequence_data(max_items=int(1e5), do_preprocess=True)
-    print(test.groupby(1))
+    pass

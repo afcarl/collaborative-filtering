@@ -1,6 +1,7 @@
 # -*- mode: gitignore -*-
 *.*~
 *.py[oc]
+*.npy
 .idea/
 *.xz
 *.aux
