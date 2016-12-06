@@ -1,47 +1,25 @@
 # -*- coding: utf-8 -*-
 import os
-from collections import defaultdict
 from time import time
 
-import tensorflow as tf
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 from joblib import dump, load
-from scipy.sparse import csc_matrix, lil_matrix, csr_matrix
+from scipy.sparse import csc_matrix, csr_matrix
 from sklearn.model_selection import train_test_split
+
+from src.Utils import preprocess
 
 data_dir = os.path.join(os.path.split(os.path.realpath(__file__))[0], "..", "input")
 
 trainSet = os.path.join(data_dir, "customeraffinity.train")
 scoreSet = os.path.join(data_dir, "customeraffinity.score")
 
-
-def preprocess(x):
-    pre = lambda x: (float(x) - 3) / 2
-    return generic_apply(pre, x)
-
-
-def postprocess(x):
-    post = lambda x: 2 * x + 3
-    return generic_apply(post, x)
-
-
-def generic_apply(func, data):
-    if isinstance(data, (int, float, np.int32, np.int64, np.float32, np.float64)):
-        return func(data)
-    elif isinstance(data, list):
-        return [func(v) for v in data]
-    elif isinstance(data, np.ndarray):
-        vfunc = np.vectorize(func)
-        return vfunc(data)
-    elif isinstance(data, pd.Series):
-        return data.apply(func)
-    else:
-        raise TypeError('unsupported {}'.format(type(data)))
-
-
 R_SHAPE = (93705, 3561)
 
+
+# ---- Data as matrices and SparseTensors
 
 def import_matrix(pr_valid=0.1, do_preprocess=False, return_sparse=True):
     tbl = pd.read_table(trainSet, sep=',', header=None)
@@ -86,35 +64,39 @@ def import_tensor(pr_valid=0.1, do_preprocess=False):
 
 
 def to_sparse_tensor(tbl):
-    tensor = tf.SparseTensor(list(zip(
-        tbl.iloc[:, 0].values, tbl.iloc[:, 1].values)),
-        tbl.iloc[:, -1].values,
-        list(R_SHAPE))
+    tensor = tf.SparseTensor(list(zip(tbl.iloc[:, 0].values, tbl.iloc[:, 1].values)),
+                             tbl.iloc[:, -1].values,
+                             list(R_SHAPE))
 
     return tensor
 
 
 # ---- Data as sequences of ratings
 
+
+def dataframe_split(df, test_ratio):
+    length = len(df)
+    all_indices = list(range(length))
+    test_indices = np.random.choice(all_indices, int(test_ratio * length), replace=False)
+    train_indices = list(set(all_indices).difference(test_indices))
+    test_df = df.iloc[test_indices, :]
+    train_df = df.iloc[train_indices, :]
+    print("[Split] {} train, {} test ".format(len(train_indices), len(test_indices)))
+    return train_df, test_df
+
 def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
-    t0 = time()
     # Read training data
-    tbl = pd.read_table(trainSet, sep=',', header=None)
+    data_frame = pd.read_table(trainSet, sep=',', header=None)
     # Preprocess if needed
-    if do_preprocess: tbl.iloc[:, -1].apply(preprocess)
+    if do_preprocess: data_frame.iloc[:, -1].apply(preprocess)
 
     # Split the table in train-test
-    test_tbl = None
     if test_ratio:
-        length = len(tbl)
-        all_indices = list(range(length))
-        test_indices = np.random.choice(all_indices, int(test_ratio * length), replace=False)
-        train_indices = list(set(all_indices).difference(test_indices))
-        test_tbl = tbl.iloc[test_indices, :]
-        tbl = tbl.iloc[train_indices, :]
-        print("[Split] {} train, {} test ".format(len(train_indices), len(test_indices)))
+        data_frame, test_tbl = dataframe_split(data_frame, test_ratio)
+    else:
+        test_tbl = None
 
-    n_train = int(max_items) if max_items else len(tbl)
+    n_train = int(max_items) if max_items else len(data_frame)
     # matrix = lil_matrix((n_train, 3), dtype=np.float32)
     tot_n_elts = n_train
     curr_client = 0
@@ -129,7 +111,7 @@ def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
     n_ratings = 0  # 2000
 
     for i in range(n_train):
-        user, item, rating = tbl.iloc[i]
+        user, item, rating = data_frame.iloc[i]
 
         if not seq_len or user == curr_client:
             user_hist.append((item, rating))
@@ -169,7 +151,6 @@ def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
     # Return sparse column matrix
     matrix = csr_matrix((data[:previous_index], (row_indices[:previous_index], col_indices[:previous_index])),
                         dtype=np.float32)
-    print("[Loaded] {} sequences - took {} s".format(matrix.shape, time() - t0))
 
     return matrix, test_tbl
 
@@ -179,14 +160,17 @@ def cached_sequence_data(max_items=None, test_ratio=0.1, do_preprocess=False, fi
     data_file = os.path.join(data_dir, fp)
     if os.path.exists(data_file):
         t0 = time()
-        sequences, test_tbl = load(data_file)
-        print("[Loaded] {} from cache - took {}".format(data_file, time() - t0))
-        if max_items and sequences.shape[0] > max_items:
-            sequences = sequences[:max_items]
+        sequences, test_dataframe = load(data_file)
+        n_sequences = sequences.shape[0]
+        n_test_ratings = test_dataframe.shape[0]
+        print("[Loaded] {} sequences from cache - took {}s".format(n_sequences, time() - t0))
+        if max_items and n_sequences > max_items:
+            train_items = np.random.choice(np.arange(n_sequences), max_items, replace=False)
+            sequences = sequences[train_items]
     else:
-        sequences, test_tbl = import_sequence(max_items, do_preprocess, test_ratio)
-        dump((sequences, test_tbl), data_file)
-    return sequences, test_tbl
+        sequences, test_dataframe = import_sequence(max_items, do_preprocess, test_ratio)
+        dump((sequences, test_dataframe), data_file)
+    return sequences, test_dataframe
 
 
 def future_generator(X, batch_size, sparse=True, back_to_the_future=False):
@@ -238,17 +222,17 @@ def sequence_encode(seq):
     return matrix
 
 
-def import_validation_sparse(filename='seq_valid_data', ext='bz2', max_items=None):
+def validation_sparse_matrix(filename='seq_valid_data', ext='bz2', max_items=None):
     """ Test data """
-    tbl = pd.read_table(scoreSet, sep=',', nrows=max_items)
+    score_dataframe = pd.read_table(scoreSet, sep=',', nrows=max_items)
 
-    fp = filename+'.'+ext
+    fp = filename + '.' + ext
     data_file = os.path.join(data_dir, fp)
 
     try:
         matrix = load(data_file)
     except Exception:
-        user_grp = tbl.groupby('new_user', sort=False)
+        user_grp = score_dataframe.groupby('new_user', sort=False)
         rows, cols, data = [], [], []
         for i, (user, item_lst) in enumerate(user_grp):
             n = len(item_lst)
@@ -260,8 +244,28 @@ def import_validation_sparse(filename='seq_valid_data', ext='bz2', max_items=Non
                             shape=(len(user_grp), R_SHAPE[1]),
                             dtype=np.float32)
         dump(matrix, data_file)
-    return tbl, matrix
+    return score_dataframe, matrix
 
 
 if __name__ == "__main__":
-    pass
+    t0 = time()
+    do_preprocess = True
+    test_ratio = 0.1
+    tbl = pd.read_table(trainSet, sep=',', header=None)
+    # Preprocess if needed
+    if do_preprocess: tbl.iloc[:, -1].apply(preprocess)
+
+    # Split the table in train-test
+    test_tbl = None
+    if test_ratio:
+        length = len(tbl)
+        all_indices = list(range(length))
+        test_indices = np.random.choice(all_indices, int(test_ratio * length), replace=False)
+        train_indices = list(set(all_indices).difference(test_indices))
+        test_tbl = tbl.iloc[test_indices, :]
+        tbl = tbl.iloc[train_indices, :]
+        print("[Split] {} train, {} test ".format(len(train_indices), len(test_indices)))
+    matrix = sequence_encode(tbl)
+    print("[Loaded] {} sequences - took {} s".format(matrix.shape, time() - t0))
+
+    import_sequence(do_preprocess=do_preprocess, test_ratio=test_ratio)
