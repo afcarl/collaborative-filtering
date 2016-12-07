@@ -6,10 +6,10 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from joblib import dump, load
-from scipy.sparse import csc_matrix, csr_matrix
+from scipy.sparse import csc_matrix, csr_matrix, coo_matrix
 from sklearn.model_selection import train_test_split
 
-from src.Utils import preprocess
+from Utils import preprocess
 
 data_dir = os.path.join(os.path.split(os.path.realpath(__file__))[0], "..", "input")
 
@@ -22,12 +22,12 @@ R_SHAPE = (93705, 3561)
 # ---- Data as matrices and SparseTensors
 
 def import_matrix(pr_valid=0.1, do_preprocess=False, return_sparse=True):
-    tbl = pd.read_table(trainSet, sep=',', header=None)
+    data_frame = pd.read_table(trainSet, sep=',', header=None)
 
     if do_preprocess:
-        tbl.iloc[:, -1] = tbl.iloc[:, -1].apply(preprocess)
+        data_frame.iloc[:, -1] = data_frame.iloc[:, -1].apply(preprocess)
 
-    train_items, val_items = train_test_split(tbl, test_size=pr_valid)
+    train_items, val_items = train_test_split(data_frame, test_size=pr_valid)
 
     train_mat = to_matrix(train_items)
     valid_mat = to_matrix(val_items)
@@ -73,32 +73,40 @@ def to_sparse_tensor(tbl):
 
 # ---- Data as sequences of ratings
 
-
 def dataframe_split(df, test_ratio):
     length = len(df)
-    all_indices = list(range(length))
-    test_indices = np.random.choice(all_indices, int(test_ratio * length), replace=False)
-    train_indices = list(set(all_indices).difference(test_indices))
+    # Generate indices split
+    test_indices = np.random.choice(length, int(test_ratio * length), replace=False)
+    train_indices = list(set(range(length)).difference(test_indices))
+
     test_df = df.iloc[test_indices, :]
     train_df = df.iloc[train_indices, :]
+
     print("[Split] {} train, {} test ".format(len(train_indices), len(test_indices)))
     return train_df, test_df
 
+
 def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
     # Read training data
-    data_frame = pd.read_table(trainSet, sep=',', header=None)
+    data_frame = pd.read_table(trainSet, sep=',', header=None, nrows=max_items)
     # Preprocess if needed
     if do_preprocess: data_frame.iloc[:, -1].apply(preprocess)
 
     # Split the table in train-test
     if test_ratio:
-        data_frame, test_tbl = dataframe_split(data_frame, test_ratio)
+        data_frame, data_frame_bis = dataframe_split(data_frame, test_ratio)
     else:
-        test_tbl = None
+        data_frame_bis = None
 
-    n_train = int(max_items) if max_items else len(data_frame)
+    train_seqs = one_more_encoder(data_frame)
+    test_seqs = one_more_encoder(data_frame_bis)
+
+    return train_seqs, test_seqs
+
+
+def one_more_encoder(data_frame):
     # matrix = lil_matrix((n_train, 3), dtype=np.float32)
-    tot_n_elts = n_train
+    tot_n_elts = len(data_frame)
     curr_client = 0
     user_hist = []
     row_indices = []  # np.empty(sp_ids_len, dtype=np.int32)
@@ -108,10 +116,9 @@ def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
     user_bias = 0.0
 
     previous_index = 0
-    n_ratings = 0  # 2000
 
-    for i in range(n_train):
-        user, item, rating = data_frame.iloc[i]
+    for t in range(len(data_frame)):
+        user, item, rating = data_frame.iloc[t]
 
         if not seq_len or user == curr_client:
             user_hist.append((item, rating))
@@ -127,7 +134,7 @@ def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
                 data = np.hstack((row_indices, np.empty(tot_n_elts, dtype=np.float32)))
                 tot_n_elts *= 2
 
-            row_indices[previous_index:new_n_ratings] = np.full(seq_len, i, dtype=np.float32)
+            row_indices[previous_index:new_n_ratings] = np.full(seq_len, t, dtype=np.float32)
             col_indices[previous_index:new_n_ratings] = np.array(items)
             data[previous_index:new_n_ratings] = np.array(ratings) - user_bias
 
@@ -143,16 +150,14 @@ def import_sequence(max_items=None, do_preprocess=False, test_ratio=0.1):
             user_bias = 0
             seq_len = 0
 
-        if max_items and i > max_items:
-            break
-        elif i % 100000 == 0:
-            print("Processed {} lines".format(i))
+        if t % 100000 == 0: print("Processed {} lines".format(t))
 
-    # Return sparse column matrix
+    # Construct and return sparse matrix
     matrix = csr_matrix((data[:previous_index], (row_indices[:previous_index], col_indices[:previous_index])),
+                        shape=(len(data_frame), R_SHAPE[1]),
                         dtype=np.float32)
 
-    return matrix, test_tbl
+    return matrix
 
 
 def cached_sequence_data(max_items=None, test_ratio=0.1, do_preprocess=False, filename='seq_data', ext='bz2'):
@@ -165,7 +170,7 @@ def cached_sequence_data(max_items=None, test_ratio=0.1, do_preprocess=False, fi
         n_test_ratings = test_dataframe.shape[0]
         print("[Loaded] {} sequences from cache - took {}s".format(n_sequences, time() - t0))
         if max_items and n_sequences > max_items:
-            train_items = np.random.choice(np.arange(n_sequences), max_items, replace=False)
+            train_items = np.random.choice(n_sequences, max_items, replace=False)
             sequences = sequences[train_items]
     else:
         sequences, test_dataframe = import_sequence(max_items, do_preprocess, test_ratio)
@@ -184,6 +189,7 @@ def future_generator(X, batch_size, sparse=True, back_to_the_future=False):
         x_train = X[i * batch_size:min((i + 1) * batch_size, total_samples), :]
         x_test = X[i * batch_size + f:min((i + 1) * batch_size + f, total_samples), :]
 
+        # Eventually extend the target matrix with the last vector of the original matrix
         diff = x_train.shape[0] - x_test.shape[0]
         if diff: x_test = np.vstack((x_test, x_test[-diff:]))
 
@@ -248,24 +254,4 @@ def validation_sparse_matrix(filename='seq_valid_data', ext='bz2', max_items=Non
 
 
 if __name__ == "__main__":
-    t0 = time()
-    do_preprocess = True
-    test_ratio = 0.1
-    tbl = pd.read_table(trainSet, sep=',', header=None)
-    # Preprocess if needed
-    if do_preprocess: tbl.iloc[:, -1].apply(preprocess)
-
-    # Split the table in train-test
-    test_tbl = None
-    if test_ratio:
-        length = len(tbl)
-        all_indices = list(range(length))
-        test_indices = np.random.choice(all_indices, int(test_ratio * length), replace=False)
-        train_indices = list(set(all_indices).difference(test_indices))
-        test_tbl = tbl.iloc[test_indices, :]
-        tbl = tbl.iloc[train_indices, :]
-        print("[Split] {} train, {} test ".format(len(train_indices), len(test_indices)))
-    matrix = sequence_encode(tbl)
-    print("[Loaded] {} sequences - took {} s".format(matrix.shape, time() - t0))
-
-    import_sequence(do_preprocess=do_preprocess, test_ratio=test_ratio)
+    pass

@@ -114,8 +114,15 @@ class DenoisingAutoencoder(object):
         masked_error = tf.select(self.missing_mask, zero_like, error)
         reweighted_loss = tf.select(self.dropout_mask, alpha * masked_error, beta * masked_error)
         # reweighted_loss = tf.select(tf.equal(self.x, zero_like), zero_like, loss)
-        self.cost = 0.5 * tf.reduce_sum(tf.pow(reweighted_loss, 2.0))
+
+        # length = tf.reduce_sum(tf.logical_and(tf.logical_not(self.missing_mask), self.missing_mask))
+        # [32, 3500]
+        cost = 0.5 * tf.reduce_sum(tf.pow(reweighted_loss, 2.0))
+        # cost /= tf.cast(tf.count_nonzero(self.x), tf.float32)
+        # self.cost = tf.reduce_mean(cost)
+        self.cost = cost
         self.optimizer = optimizer.minimize(self.cost)
+        self.gradients = self.optimizer
 
         init = tf.global_variables_initializer()
         self.sess = session
@@ -132,17 +139,16 @@ class DenoisingAutoencoder(object):
     def partial_fit(self, X, missing_vals):
         assert X.dtype == np.float32
         assert missing_vals.dtype == np.bool
-        cost, opt = self.sess.run((self.cost, self.optimizer),
-                                  feed_dict={self.x_orig: X,
-                                             self.keep_prob: self.dropout_probability,
-                                             self.missing_mask: missing_vals})
-        return cost
+        cost, opt = self.sess.run((self.cost, self.optimizer), feed_dict={self.x_orig: X,
+                                                                          self.keep_prob: self.dropout_probability,
+                                                                          self.missing_mask: missing_vals})
+        return cost, opt
 
     def calc_total_cost(self, X, missing_vals):
-        return self.sess.run(self.cost, feed_dict={self.x_orig: X,
-                                                   self.missing_mask : missing_vals,
+        cost = self.sess.run(self.cost, feed_dict={self.x_orig: X,
+                                                   self.missing_mask: missing_vals,
                                                    self.keep_prob: 1.0})
-
+        return np.sqrt(2.0 * cost)
     def transform(self, X):
         return self.sess.run(self.hidden, feed_dict={self.x: X, self.keep_prob: 1.0})
 

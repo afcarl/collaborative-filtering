@@ -19,3 +19,4 @@ autoencoder/output/
 autoencoder/data/
 __pycache__/
 .ipynb_checkpoints
+events.*
