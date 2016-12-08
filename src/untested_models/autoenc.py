@@ -1,18 +1,13 @@
 #!/usr/bin/env python2
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import keras.backend as K
+import numpy as np
 from keras.callbacks import TensorBoard
 from keras.layers import Input, Dense, Dropout
 from keras.models import Model
 from keras.regularizers import l2
-from keras.optimizers import Adadelta
-from sklearn.model_selection import train_test_split
 
-from src.data import postprocess, trainSet, cached_sequence_data, import_sequence, import_matrix, batch_generator, \
-    one_hot_encode
 from src.Utils import preprocess, postprocess
+from src.data import postprocess, cached_sequence_data, import_matrix, batch_generator, one_hot_encode
 
 
 def masked_mse(do_preprocess=False):
@@ -104,9 +99,6 @@ if __name__ == '__main__':
     x_train, x_test = import_matrix(pr_valid=0.05, do_preprocess=False, return_sparse=False)
 
     # mask = x_train != preprocess(0)
-    # Unbias item vectors by removing the mean rating
-    # x_train -= x_train.mean(axis=1)[:, np.newaxis]
-    # x_test -= x_test.mean(axis=1)[:, np.newaxis]
     total_samples, input_dim = x_train.shape
 
     encoding_dim = 350

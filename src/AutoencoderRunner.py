@@ -1,5 +1,6 @@
 import os
 from time import time
+import tempfile
 
 import numpy as np
 import sklearn.preprocessing as prep
@@ -12,14 +13,17 @@ from data import cached_sequence_data, get_random_block_from_data, \
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
+tmp_dir = tempfile.gettempdir()
+curr_dir = os.path.dirname(os.path.abspath(__file__))
+
 flags = tf.app.flags
-flags.DEFINE_string("log_path", '/tmp/dae_cf', "Directory to write model checkpoints.")
-flags.DEFINE_string("save_path", os.path.join('..', 'output'), "Directory to write predictions in.")
+flags.DEFINE_string("log_path", os.path.join(tmp_dir, 'dae_cf'), "Directory to write model checkpoints.")
+flags.DEFINE_string("save_path", os.path.join(curr_dir, '..', 'output'), "Directory to write predictions in.")
 flags.DEFINE_integer("hidden", 712, "Latent dimension size.")
 flags.DEFINE_float("learning_rate", 0.01, "Initial learning rate.")
 flags.DEFINE_float("test_ratio", 0.1, "Ratio of the training set to test on.")
 flags.DEFINE_float("hide_ratio", 0.25, "Ratio of the corrupted entries.")
-flags.DEFINE_float("alpha", 1.0, "Weight of prediction loss.")
+flags.DEFINE_float("alpha", 1.0, "Weight of the prediction loss.")
 flags.DEFINE_float("beta", 0.7, "Weight of denoising loss.")
 flags.DEFINE_float("weight_decay", 0.02, "Level of L2 regularization.")
 flags.DEFINE_float("scale", 0.2, "Variance of the corrupting noise.")
@@ -27,7 +31,8 @@ flags.DEFINE_integer("batch_size", 32, "Numbers of training examples per mini ba
 flags.DEFINE_integer("epochs", 25, "Number of training epochs.")
 flags.DEFINE_integer("display_step", 1, "Period to display loss.")
 flags.DEFINE_integer("test_step", 5, "Period to test model and write checkpoint to disk.")
-flags.DEFINE_integer("n_train", None, "Number of sequences to train on (if None, will train on all of them).")
+flags.DEFINE_integer("n_train", None, "Number of sequences to train on (if None, will train on all).")
+flags.DEFINE_integer("n_test", None, "Number of sequences to test on (if None, will test on all).")
 flags.DEFINE_integer("prediction_precision", 3, "Digits to keep when doing predictions.")
 flags.DEFINE_bool("predict", False, "Skip training and run prediction step.")
 FLAGS = flags.FLAGS
@@ -48,7 +53,6 @@ def standard_scale(X_train, X_test):
 
 
 def main(_):
-    if FLAGS.predict: restore_model()
 
     training_epochs = FLAGS.epochs
     batch_size = FLAGS.batch_size
@@ -57,6 +61,7 @@ def main(_):
     hidden_units = FLAGS.hidden
     lr = FLAGS.learning_rate
     n_train = FLAGS.n_train
+    n_test = FLAGS.n_test
     test_ratio = FLAGS.test_ratio
     hide_ratio = FLAGS.hide_ratio
     log_path = FLAGS.log_path
@@ -67,6 +72,11 @@ def main(_):
     scale_ = FLAGS.scale
 
     if tf.gfile.Exists(log_path):
+        # if FLAGS.predict:
+        #     saver.restore(sess, log_path)
+        #     predict(autoencoder)
+        #     return
+        # else:
         tf.gfile.DeleteRecursively(log_path)
     tf.gfile.MakeDirs(log_path)
 
@@ -74,8 +84,7 @@ def main(_):
     summary = tf.summary.merge_all()
 
     t0 = time()
-    X_train, X_test = cached_sequence_data(max_items=n_train, test_ratio=test_ratio, do_preprocess=True)
-    print("[Loaded] {} sequences - took {} s".format(X_train.shape, time() - t0))
+    X_train, X_test = cached_sequence_data(n_train=n_train, n_test=n_test, test_ratio=test_ratio, do_preprocess=True)
 
     n_samples, input_dim = X_train.shape  # tf.shape(X_train).eval()
     print('[Train] Running on {} samples'.format(n_samples))
@@ -87,7 +96,7 @@ def main(_):
     with tf.Session() as sess:
 
         # Instantiate a SummaryWriter to output summaries and the Graph.
-        summary_writer = tf.train.SummaryWriter(save_path, sess.graph)
+        summary_writer = tf.train.SummaryWriter(log_path, sess.graph)
 
         autoencoder = DenoisingAutoencoder(sess, n_input=input_dim,
                                            n_hidden=hidden_units,
@@ -176,27 +185,21 @@ def main(_):
 def predict(autoencoder):
     if not os.path.exists(FLAGS.save_path): os.makedirs(FLAGS.save_path)
     print('[Valid] Loading validation dataframe & sequences')
-    score_df, score_sp_sequences = validation_sparse_matrix()
+    score_df, score_sp_sequences = validation_sparse_matrix(max_items=FLAGS.n_test)
     user_grp = score_df.groupby('new_user', sort=False)
     score_df['new_rating'] = 0.0
     print('[Valid] Computing predictions')
+    # reconstructions = autoencoder.reconstruct(score_sp_sequences.toarray())
     for i, (user, item_lst) in enumerate(user_grp):
         input_vect = score_sp_sequences[i, :].toarray().reshape(1, -1)
-        latent_repr = autoencoder.transform(input_vect)
-        output = autoencoder.generate(latent_repr)
+        output = autoencoder.reconstruct(input_vect)
         predictions = np.clip(np.round(postprocess(output[0, item_lst.new_item.values]),
                                        FLAGS.prediction_precision), 1.0, 5.0)
         score_df.ix[item_lst.index, 'new_rating'] = predictions
     print('[Valid] Flushing predictions to disk')
     score_df.to_csv(os.path.join(FLAGS.save_path, 'customeraffinity.predictions'), index=False,
-                    columns=['', 'new_user', 'new_item', 'new_rating'])
+                    header=['', 'new_user', 'new_item', 'new_rating'])
 
-
-def restore_model():
-    with tf.Session() as sess:
-        saver = tf.train.Saver()
-        vars = saver.restore(sess, FLAGS.log_path)
-        predict(vars.autoencoder)
 
 if __name__ == '__main__':
     tf.app.run()

@@ -2,12 +2,15 @@
 
 Project strucure:
 * `src`: non-negative matrix factorization, and denoising autoencoder implementation
-* `autoencoder` fork of the [Hybrid Collaborative Filtering with Neural Networks](https://github.com/fstrub95/Autoencoders_cf) repository
+* `autoencoder` fork of the [Hybrid Collaborative Filtering with Neural Networks]
+(https://github.com/fstrub95/Autoencoders_cf) repository
 * `output` includes the predictions on the test dataset
 
 # Matrix Factorization
+To test whether the sequences are meaningful for the factorization,
+it is possible to remove some ratings for each user by running:
 ```
-python
+python remove_ratings.py
 ```
 
 ## ALS-WR
@@ -21,8 +24,9 @@ th ALS.lua  -xargs
 ```
 
 
-# Denoising autoencoder
-Requires tensorflow with GPU support. Parameters are shown using the `-h` option. To run training followed by prediction:
+# Denoising autoencoder (tequires tensorflow)
+
+Parameters are shown using the `-h` option. To run training followed by prediction:
 ```
 python AutoencoderRunner.py
 ```
