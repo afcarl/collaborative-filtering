@@ -10,7 +10,7 @@ from keras.regularizers import l2
 from keras.optimizers import Adadelta
 from sklearn.model_selection import train_test_split
 
-from data import postprocess, trainSet, cached_sequence_data, import_sequence, import_matrix, batch_generator, \
+from src.data import postprocess, trainSet, cached_sequence_data, import_sequence, import_matrix, batch_generator, \
     one_hot_encode
 from src.Utils import preprocess, postprocess
 

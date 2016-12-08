@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from Utils import xavier_init
+from src.Utils import xavier_init
 
 class VariationalAutoencoder(object):
 

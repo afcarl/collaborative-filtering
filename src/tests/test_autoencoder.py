@@ -1,7 +1,7 @@
 import tensorflow as tf
-from keras.objectives import mean_squared_error
-from src.autoenc import one_hot_encode, masked_mse
+
 from src.Utils import preprocess
+from src.untested_models.autoenc import one_hot_encode, masked_mse
 
 
 def test_masked_mse(do_preprocess, x1=0, x2=0):

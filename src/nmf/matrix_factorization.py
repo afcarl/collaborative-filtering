@@ -10,7 +10,7 @@ from sklearn.decomposition import nmf
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import GridSearchCV
 
-from data import scoreSet, import_matrix, data_dir
+from src.data import scoreSet, import_matrix, data_dir
 
 
 def run_nmf(matrix, init_='nndsvdar', alpha_=0.1, l1_ratio_=0.0, latent_dim=100):
@@ -28,6 +28,7 @@ def run_nmf(matrix, init_='nndsvdar', alpha_=0.1, l1_ratio_=0.0, latent_dim=100)
     W = estimator.fit_transform(matrix)  # (n_samples, n_components)
     H = estimator.components_  # (n_components, n_features)
     return (W, H), estimator.reconstruction_err_, estimator.n_iter_
+
 
 def nmf_wrapper():
     # training_set_stats()
@@ -56,6 +57,7 @@ def nmf_wrapper():
     validation_score = mf_val_rmse(W, H, validation_set)
     print("Validation RMSE={}".format(validation_score))
     test(W, H, scoreSet)
+
 
 def run_grid(data):
     params_dict = {
@@ -94,7 +96,7 @@ def test(w, h, scoreSet):
         return test_ratings
 
 
-def test_svd(max_iters, k=1000):
+def test_svd(max_iters, k=200):
     # Run k-SVD
     training_matrix, test_matrix = import_matrix()
     rows, cols = test_matrix.nonzero()
@@ -104,11 +106,10 @@ def test_svd(max_iters, k=1000):
 
     t0 = time()
     p, d, q = svds(training_matrix, k, maxiter=max_iters)
-    print('[SVD-{}] Computed {} iters in {} s'.format(k, max_iters, time()-t0))
+    print('[SVD-{}] Computed {} iters in {} s'.format(k, max_iters, time() - t0))
     loss = mf_val_rmse(p.dot(d), q, test_lst)
     print(loss)
 
 
 if __name__ == "__main__":
-    test_svd(100)
-
+    nmf_wrapper()

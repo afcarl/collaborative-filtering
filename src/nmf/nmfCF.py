@@ -2,38 +2,35 @@ from numpy import dot
 import numpy as np
 from scipy import linalg
 
-def matrix_factorization(R, K, steps=5000, alpha=0.0002, beta=0.02):
 
+def matrix_factorization(R, K, steps=5000, alpha=0.0002, beta=0.02):
     R = np.asarray(R)
     P = np.random.rand(R.shape[0], K)
     Q = np.random.rand(R.shape[1], K)
     Q = Q.T
 
-
     for step in xrange(steps):
         for i in xrange(len(R)):
             for j in xrange(len(R[i])):
                 if R[i][j] > 0:
-                    eij = R[i][j] - np.dot(P[i,:],Q[:,j])
+                    eij = R[i][j] - np.dot(P[i, :], Q[:, j])
                     for k in xrange(K):
                         P[i][k] = P[i][k] + alpha * (2 * eij * Q[k][j] - beta * P[i][k])
                         Q[k][j] = Q[k][j] + alpha * (2 * eij * P[i][k] - beta * Q[k][j])
-        eR = np.dot(P,Q)
+        eR = np.dot(P, Q)
         e = 0
         for i in xrange(len(R)):
             for j in xrange(len(R[i])):
                 if R[i][j] > 0:
-                    e = e + pow(R[i][j] - np.dot(P[i,:],Q[:,j]), 2)
+                    e = e + np.pow(R[i][j] - np.dot(P[i, :], Q[:, j]), 2)
                     for k in xrange(K):
-                        e = e + (beta/2) * (pow(P[i][k],2) + pow(Q[k][j],2))
+                        e = e + (beta / 2) * (pow(P[i][k], 2) + pow(Q[k][j], 2))
         if e < 0.001:
             break
     return P, Q.T, e
 
 
-
 def nmf_collaborative_filtering(R, K, steps=5000, alpha=0.0002, beta=0.02):
-
     R = np.asarray(R)
     P = np.random.rand(R.shape[0], K)
     Q = np.random.rand(R.shape[1], K)
@@ -49,16 +46,13 @@ def nmf_collaborative_filtering(R, K, steps=5000, alpha=0.0002, beta=0.02):
             error = np.sum(R[rated] - np.matmul(P, Q)[rated])
 
         for i in xrange(K):
-
             P[:, rated[:, i]] = P[:, rated[:, i]] + alpha * (2 * eij * Q - beta * P)
-            Q[rated[i], :] = Q[rated[i], :] +  alpha * (2 * eij * P - beta * Q)
-
-
+            Q[rated[i], :] = Q[rated[i], :] + alpha * (2 * eij * P - beta * Q)
 
 
 def nmf(X, latent_features, max_iter=100, error_limit=1e-6, fit_error_limit=1e-6):
     """
-    Decompose X to A*Y
+    Decompose X in A*Y
     """
     eps = 1e-5
     print 'Starting NMF decomposition with {} latent features and {} iterations.'.format(latent_features, max_iter)

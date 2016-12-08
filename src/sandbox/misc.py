@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import re
 
-from data import trainSet
+from src.data import trainSet
 
 
 def pd_stats():
