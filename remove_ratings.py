@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     output = "input/customeraffinity500k_shrunk_%f_%f.csv" % (preShrunk, postShrunk)
 
-    remove_ratings("input/customeraffinity500k.train", preShrunk, postShrunk, output)
+    remove_ratings("input/customeraffinity.train", preShrunk, postShrunk, output)
 
 
 
