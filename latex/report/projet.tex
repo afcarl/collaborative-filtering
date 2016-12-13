@@ -95,15 +95,28 @@ The test set provides an additional source of information, namely items which we
 The metrics used to evaluate the performance of each training method for this type of problem is either the RMSE (root mean squared error) or the MAE (mean absolute error). The scores below represent the RMSE and were computed on a validation set selected uniformly at random amongst the training set:
 
 \vspace{0.5cm}
+
 \begin{center}
-\begin{tabular}{|c|c|c|c|}
-  \hline
-  NMF & ALS-WR & User AE & Item AE \\
-  \hline
-  3.70 & 0.934 & 0.913 & 0.938 \\
-  \hline
-\end{tabular}
-\end{center}
+    \begin{tabular}{|c|c|c|c|c|}
+       \hline
+       Model & ratings & k & lambda  & RMSE \\
+       \hline
+       GD  & 500k & 15 & 0.02 & 0.863 \\
+	   GD & All & 15 & 0.02 &  0.951 \\
+       ALS & 500k & 15 & 0.03 & 0.877 \\
+	   ALS & All &  15  &  0.03 & 0.925 \\
+       ALS & All & 30 & 0.03 &  0.923 \\
+   	   ALS & All &  100  &  0.1 &   0.934 \\
+   	   AE Item Vector &  All & 0 & 0 & 0.938 \\
+       AE User Vector &  All &  0  &  0 & 0.913 \\
+	   AE User Vector &  All &  0  &  0.2 & 0.947 \\
+
+       \hline
+    \end{tabular}
+  \end{center}
+
+
+
 
 \section{Conclusion}
 
@@ -111,6 +124,8 @@ Different methods were compared in order to solve the problem of customer affini
 
 \bibliographystyle{plain}
 \bibliography{biblio} % mon fichier de base de données s'appelle bibli.bib
+
+
 
 
 \end{document}
