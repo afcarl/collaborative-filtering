@@ -5,15 +5,9 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 require("nnsparse")
 
-dofile("data/DataLoader.lua")
-
-dofile("data/MovieLensLoader.lua")
-dofile("data/DoubanLoader.lua")
-dofile("data/DummyLoader.lua")
-dofile("data/TemplateLoader.lua")
-dofile("data/ClassicLoader.lua")
-dofile("data/AlixLoader.lua")
-dofile ("tools/LuaTools.lua")
+dofile("autoencoder/src/data/DataLoader.lua")
+dofile("autoencoder/src/data/AlixLoader.lua")
+dofile("autoencoder/src/tools/LuaTools.lua")
 
 ----------------------------------------------------------------------
 -- parse command-line options

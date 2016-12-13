@@ -20,3 +20,4 @@ autoencoder/data/
 __pycache__/
 .ipynb_checkpoints
 events.*
+input/customeraffinity.d
