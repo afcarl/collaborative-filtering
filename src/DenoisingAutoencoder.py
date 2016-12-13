@@ -17,8 +17,8 @@ class DenoisingAutoencoder(object):
         :param session: tensorflow session
         :param n_input: number of input units
         :param n_hidden: number of hidden units for the first layer
-        :param alpha: weight of the prediction in the loss function
-        :param beta: weight of the denoising in the loss function
+        :param alpha: weight of the prediction error in the loss function
+        :param beta: weight of the denoising error in the loss function
         :param transfer_function: typically use the hyperbolic tangent
         :param optimizer: optimizer to user (default: Adam optimizer)
         :param dropout_probability: hide ratio
@@ -62,10 +62,7 @@ class DenoisingAutoencoder(object):
         masked_error = tf.select(self.missing_mask, zero_like, error)
         reweighted_loss = tf.select(self.dropout_mask, alpha * masked_error, beta * masked_error)
 
-        cost = 0.5 * tf.reduce_sum(tf.pow(reweighted_loss, 2.0))
-        # cost /= tf.cast(tf.count_nonzero(self.x), tf.float32)
-        # self.cost = tf.reduce_mean(cost)
-        self.cost = cost
+        self.cost = 0.5 * tf.reduce_sum(tf.pow(reweighted_loss, 2.0))
         self.optimizer = optimizer.minimize(self.cost)
 
         init = tf.global_variables_initializer()
@@ -109,4 +106,4 @@ class DenoisingAutoencoder(object):
 
     def restore_model(self, path):
         saver = tf.train.Saver()
-        vars = saver.restore(sess, FLAGS.log_path)
+        vars = saver.restore(self.sess, path)

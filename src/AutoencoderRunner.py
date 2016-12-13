@@ -1,9 +1,8 @@
 import os
-from time import time
 import tempfile
+from time import time
 
 import numpy as np
-import sklearn.preprocessing as prep
 import tensorflow as tf
 
 from DenoisingAutoencoder import DenoisingAutoencoder
@@ -20,15 +19,15 @@ flags = tf.app.flags
 flags.DEFINE_string("log_path", os.path.join(tmp_dir, 'dae_cf'), "Directory to write model checkpoints.")
 flags.DEFINE_string("save_path", os.path.join(curr_dir, '..', 'output'), "Directory to write predictions in.")
 flags.DEFINE_integer("hidden", 712, "Latent dimension size.")
-flags.DEFINE_float("learning_rate", 0.01, "Initial learning rate.")
+flags.DEFINE_float("learning_rate", 0.02, "Initial learning rate.")
 flags.DEFINE_float("test_ratio", 0.1, "Ratio of the training set to test on.")
-flags.DEFINE_float("hide_ratio", 0.25, "Ratio of the corrupted entries.")
+flags.DEFINE_float("hide_ratio", 0.25, "Ratio of corrupted input components.")
 flags.DEFINE_float("alpha", 1.0, "Weight of the prediction loss.")
-flags.DEFINE_float("beta", 0.7, "Weight of denoising loss.")
+flags.DEFINE_float("beta", 0.5, "Weight of denoising loss.")
 flags.DEFINE_float("weight_decay", 0.02, "Level of L2 regularization.")
 flags.DEFINE_float("scale", 0.2, "Variance of the corrupting noise.")
 flags.DEFINE_integer("batch_size", 32, "Numbers of training examples per mini batch.")
-flags.DEFINE_integer("epochs", 25, "Number of training epochs.")
+flags.DEFINE_integer("epochs", 15, "Number of training epochs.")
 flags.DEFINE_integer("display_step", 1, "Period to display loss.")
 flags.DEFINE_integer("test_step", 5, "Period to test model and write checkpoint to disk.")
 flags.DEFINE_integer("n_train", None, "Number of sequences to train on (if None, will train on all).")
@@ -36,20 +35,6 @@ flags.DEFINE_integer("n_test", None, "Number of sequences to test on (if None, w
 flags.DEFINE_integer("prediction_precision", 3, "Digits to keep when doing predictions.")
 flags.DEFINE_bool("predict", False, "Skip training and run prediction step.")
 FLAGS = flags.FLAGS
-
-
-def min_max_scale(X_train, X_test):
-    preprocessor = prep.MaxAbsScaler().fit(X_train)
-    X_train = preprocessor.transform(X_train)
-    X_test = preprocessor.transform(X_test)
-    return X_train, X_test
-
-
-def standard_scale(X_train, X_test):
-    preprocessor = prep.StandardScaler(with_mean=False).fit(X_train)
-    X_train = preprocessor.transform(X_train)
-    X_test = preprocessor.transform(X_test)
-    return X_train, X_test
 
 
 def main(_):
@@ -72,11 +57,6 @@ def main(_):
     scale_ = FLAGS.scale
 
     if tf.gfile.Exists(log_path):
-        # if FLAGS.predict:
-        #     saver.restore(sess, log_path)
-        #     predict(autoencoder)
-        #     return
-        # else:
         tf.gfile.DeleteRecursively(log_path)
     tf.gfile.MakeDirs(log_path)
 
@@ -122,35 +102,21 @@ def main(_):
             # Loop over all batches
             for i in range(n_train_batches):
                 # Load batch
+                # batch_xs = X_train[i * batch_size:min((i + 1) * batch_size, n_samples), :].toarray()
                 batch_xs = get_random_block_from_data(X_train, batch_size).toarray()
 
                 # Get missing values indices (will not participate in activations or backprop)
                 missing = batch_xs == 0
 
-                # feed_dict = {autoencoder.x_orig: batch_xs,
-                # autoencoder.keep_prob: autoencoder.dropout_probability,
-                # autoencoder.missing_mask: missing}
-
-                # cost = sess.run(autoencoder.cost, feed_dict=feed_dict)
-                cost, opt = autoencoder.partial_fit(batch_xs, missing)
                 # Fit using batch data
-                # grads_and_vars = sess.run(autoencoder.optimizer.compute_gradients, feed_dict={}
-                # Ask the optimizer to apply the capped gradients.
-                # autoencoder.optimizer.apply_gradients(grads_and_vars)
+                cost, opt = autoencoder.partial_fit(batch_xs, missing)
 
-                # with tf.name_scope('train_summaries'):
-                # tf.summary.scalar('squared_error', cost)
-                # for grad, var in grads_and_vars:
-                #     tf.summary.histogram(var.name, grad)
                 # Compute average loss
                 avg_cost += cost / n_samples * batch_size
 
             # Display loss evolution
             if epoch % display_step == 0:
                 print("[Train] Epoch: {:04d}, Cost = {:.9f} ({:.3f}s)".format(epoch + 1, avg_cost, time() - t0))
-                # Update the events file.
-                # summary_writer.add_summary(opt, epoch)
-                # summary_writer.flush()
 
             # Save a checkpoint and evaluate the model periodically.
             if (epoch + 1) % test_step == 0 or (epoch + 1) == training_epochs:
@@ -170,15 +136,7 @@ def main(_):
                 print("[Test ] Cost = {:.9f} ({:.3f}s)".format(avg_cost, time() - t0))
 
         summary_writer.close()
-        # Sampling some test values
-        # print("User\t Item\t Rating \t Reconstruction")
-        # for i in range(50):
-        #     user, item, rating = X_test.iloc[i]
-        #     one_hot = one_hot_encode(item, rating, input_dim).reshape(1, -1)
-        #     latent_repr = autoencoder.transform(one_hot)
-        #     output = autoencoder.generate(latent_repr)
-        #     prediction = np.round(np.clip(postprocess(output[0, item]), 1.0, 5.0), digits)
-        #     print('{}\t {}\t {}\t {}'.format(user, item, rating, prediction))
+
         predict(autoencoder)
 
 
