@@ -5,7 +5,7 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 require("nnsparse")
 
-dofile ("../tools/BenchmarkTools.lua")
+dofile ("./autoencoder/src/tools/BenchmarkTools.lua")
 
 -- ALS, implementing
 -- http://www.grappa.univ-lille3.fr/~mary/cours/stats/centrale/reco/paper/MatrixFactorizationALS.pdf

@@ -1,30 +1,37 @@
 # Know your customers
 
 Project strucure:
-* `src`: non-negative matrix factorization, and denoising autoencoder implementation
-* `autoencoder` fork of the [Hybrid Collaborative Filtering with Neural Networks]
-(https://github.com/fstrub95/Autoencoders_cf) repository
+* `src`: non-negative matrix factorization and denoising autoencoder implementation
+* `autoencoder` fork of the [Hybrid Collaborative Filtering with Neural Networks](https://github.com/fstrub95/Autoencoders_cf) repository
 * `output` includes the predictions on the test dataset
 
-# Matrix Factorization
+## Matrix Factorization
 To test whether the sequences are meaningful for the factorization,
 it is possible to remove some ratings for each user by running:
 ```
 python remove_ratings.py
 ```
 
-## ALS-WR
+### ALS-WR
+To run the ALS-WR baseline, parse the ratings into a torch data file. 
+The ratings file are supposed to having been placed in the `input` directory. 
 ```
-th ALS.lua  -xargs
+th data.lua  -ratings input/customeraffinity.train -out input/customer-train.t7 -fileType alix -ratio 0.9
+```
+Then the actual ALS can be run by running the following command:
+```
+th ALS.lua -file <file> -lambda <lambda> -rank <rank> -seed <seed> 
+
+e.g. th ALS.lua -file input/customer-train.t7 -rank 20 -lambda 0.1
 
 -file         The relative path to your data file.
--lambda       Rank of the final matrix
--rank         Regularisation
+-lambda       Regularisation
+-rank         Rank of the final matrix
 -seed         The random seed
 ```
 
 
-# Denoising autoencoder (tequires tensorflow)
+# Denoising autoencoder (requires tensorflow)
 
 Parameters are shown using the `-h` option. To run training followed by prediction:
 ```
@@ -36,10 +43,6 @@ python AutoencoderRunner.py
 ### Running the network
 Change the current working directory to `autoencoder/src`.
 
-Start by parsing the ratings file into a torch data file:
-```
-th data.lua  -ratings ../../input/customeraffinity.train -out ../../input/customer-train.t7 -fileType alix -ratio 0.9
-```
 Run the network using a neural net configuration:
 ```
 th main.lua  -file ../../input/customer-train.t7 -conf ../conf/conf.ratings.U.lua  -save ../output/network.R.t7 -type U -meta 0 -gpu 0
