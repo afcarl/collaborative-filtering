@@ -3,7 +3,8 @@
 Project strucure:
 * `src`: non-negative matrix factorization and denoising autoencoder implementation
 * `autoencoder` fork of the [Hybrid Collaborative Filtering with Neural Networks](https://github.com/fstrub95/Autoencoders_cf) repository
-* `output` includes the predictions on the test dataset
+* `input` where the data files should live
+* `output` will include the predictions on the test dataset
 
 ## Matrix Factorization
 To test whether the sequences are meaningful for the factorization,

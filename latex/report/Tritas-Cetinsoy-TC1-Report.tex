@@ -1,3 +1,4 @@
+
 \documentclass[10pt,twocolumn]{article}
 \usepackage{hyperref}
 \usepackage{url}
@@ -40,19 +41,21 @@ The dataset used contains 2536705 ratings of 3561 items given by 93705 users. Le
 
 In non negative factorizations we seek SPD matrices U and V such that the rating product matrix can be factorized as $R = UV^T$. It is possible to find such matrices that minimize the reconstruction error defined below by using an iterative optimization method (e.g gradient descent): 
 
-\begin{equation*}
+\begin{equation}
 \begin{split}
  U^*, V^* = \argmin_{U,V} & \frac{1}{2} ||R - UV||^2 \\
 			 + & \alpha \lambda_1 (||U||_1 + ||V||_1) \\
 			  + & \frac{1}{2} \alpha \lambda_2  (||U||^2 + ||V||^2) 
-\end{split}
-\end{equation*}  
+\end{split} \label{eq:1}
+\end{equation}  
 
 The reconstruction error is computed over all non negative coefficients of the R matrix. 
 
 \subsection{ALS-WR}
 
-The Alternating Least Squares with Regularization algorithm \cite{zhou2008large}  minimizes \eqref{1}, which is non-convex as both $U$ and $V$ are unknown. It does so by alternatively updating U while keeping V fixed and then updating V while keeping U fixed. The parameters used were $\lambda = 0.01$ and a latent dimension $d = 100$.
+The Alternating Least Squares with Regularization algorithm \cite{zhou2008large}  minimizes \ref{eq:1}.%, which is non-convex as both $U$ and $V$ are unknown. 
+It does so by alternatively updating U while keeping V fixed and then updating V while keeping U fixed. 
+The parameters used were $\lambda = 0.01$ and a latent dimension $d = 100$.
 
 \subsection{Temporal dynamics}
 In the context of matrix factorization, temporal dynamics can be achieved by adding bias terms in the objective function pertaining to either sides of the matrix factors. However, in the speicific problem there is no information with which to encode this bias.
@@ -114,9 +117,6 @@ The metrics used to evaluate the performance of each training method for this ty
        \hline
     \end{tabular}
   \end{center}
-
-
-
 
 \section{Conclusion}
 
