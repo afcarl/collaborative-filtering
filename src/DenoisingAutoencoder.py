@@ -37,30 +37,33 @@ class DenoisingAutoencoder(object):
         network_weights = self._initialize_weights()
         self.weights = network_weights
 
-        # Apply weight regularization
+        # Apply weight regularization, regularization can help overfitting
         l2_reg = tf.contrib.layers.l2_regularizer(weight_decay)
         for w in self.weights.values(): l2_reg(w)
         # Define input and hidden layer
         self.x_orig = tf.placeholder(tf.float32, [None, self.n_input], name='X')
         self.missing_mask = tf.placeholder(tf.bool, [None, self.n_input], name='missing')
-        zero_like = tf.zeros_like(self.x_orig)
+        zero_like = tf.zeros_like(self.x_orig) # tensor
         # Hide original missing values
-        self.x = tf.select(self.missing_mask, zero_like, self.x_orig)
+        self.x = tf.where(self.missing_mask, zero_like, self.x_orig)
         # Apply drop-out and save the dropout mask
         self.dropped_out = tf.nn.dropout(self.x, self.keep_prob)
         self.dropout_mask = tf.equal(self.x, self.dropped_out)
+        # Y = tanh(X_corr * W1 + b1)
         self.hidden = self.transfer(tf.add(tf.matmul(self.dropped_out + self.noise_scale * tf.random_normal((n_input,)),
                                                      self.weights['w1']), self.weights['b1']))
+        # Y_prime = ? (hidden_output * W2 + b2)
         self.reconstruction = tf.add(tf.matmul(self.hidden, self.weights['w2']), self.weights['b2'])
+
 
         '''
         Before backpropagation, unknown ratings are turned
         to zero error, prediction errors are reweighed by α and
         reconstruction errors are reweighed by β
         '''
-        error = tf.sub(self.reconstruction, self.x)
-        masked_error = tf.select(self.missing_mask, zero_like, error)
-        reweighted_loss = tf.select(self.dropout_mask, alpha * masked_error, beta * masked_error)
+        error = tf.subtract(self.reconstruction, self.x)
+        masked_error = tf.where(self.missing_mask, zero_like, error)
+        reweighted_loss = tf.where(self.dropout_mask, alpha * masked_error, beta * masked_error)
 
         self.cost = 0.5 * tf.reduce_sum(tf.pow(reweighted_loss, 2.0))
         self.optimizer = optimizer.minimize(self.cost)

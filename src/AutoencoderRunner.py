@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import tempfile
 from time import time
@@ -76,7 +77,7 @@ def main(_):
     with tf.Session() as sess:
 
         # Instantiate a SummaryWriter to output summaries and the Graph.
-        summary_writer = tf.train.SummaryWriter(log_path, sess.graph)
+        summary_writer = tf.summary.FileWriter(log_path, sess.graph)
 
         autoencoder = DenoisingAutoencoder(sess, n_input=input_dim,
                                            n_hidden=hidden_units,
